@@ -9,7 +9,7 @@ namespace ResourcefulHands.Patches;
 public static class SpriteRendererPatches
 {
     private static bool isSelf = false;
-    private static Dictionary<string, Sprite> _customSpriteCache = new();
+    internal static Dictionary<string, Sprite> _customSpriteCache { get; private set; } = new();
 
     private static Sprite GetSprite(Sprite sprite)
     {
@@ -29,7 +29,13 @@ public static class SpriteRendererPatches
         var texture = Plugin.GetTextureFromPacks(sprite.texture.name);
         if(texture == null) return sprite;
 
-        var localSprite = Sprite.Create(texture, sprite.rect, new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height), sprite.pixelsPerUnit);
+        // clamp rect incase someone fucks the texture size
+        float clampedX = Mathf.Clamp(sprite.rect.x, 0, texture.width);
+        float clampedY = Mathf.Clamp(sprite.rect.y, 0, texture.height);
+        float clampedWidth = Mathf.Clamp(sprite.rect.width, 0, texture.width - clampedX);
+        float clampedHeight = Mathf.Clamp(sprite.rect.height, 0, texture.height - clampedY);
+        
+        var localSprite = Sprite.Create(texture, new Rect(clampedX, clampedY, clampedWidth, clampedHeight), new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height), sprite.pixelsPerUnit);
         localSprite.name = sprite.name + Plugin.ModifiedStr;
         Debug.Log($"cached {sprite.name} as {localSprite}");
         _customSpriteCache.Add(sprite.name, localSprite);
@@ -170,27 +176,6 @@ public static class MaterialPatches
 {
     private static bool isSelf = false;
     private static readonly int MainTex = Shader.PropertyToID("_MainTex");
-
-/*    [HarmonyPatch(MethodType.Constructor)]
-    [HarmonyPostfix]
-    private static void Constructor_Postfix(Material __instance)
-    {
-        if (isSelf)
-        { isSelf = false; return; }
-        
-#if DEBUG
-        Debug.Log($"{__instance?.name} was accessed [ctor]");
-#endif
-        
-        if(__instance == null) return;
-        if(!__instance.HasProperty(MainTex)) return;
-        isSelf = true;
-        if(__instance.mainTexture == null) return;
-        isSelf = true;
-        var texture = Plugin.GetTextureFromPacks(__instance.mainTexture.name);
-        isSelf = true;
-        __instance.mainTexture = texture;
-    }*/
 
     [HarmonyPatch(methodName:"get_mainTexture")]
     [HarmonyPostfix]

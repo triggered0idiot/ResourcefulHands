@@ -15,8 +15,10 @@ namespace ResourcefulHands;
         "name":"generated-game-assets",
         "desc":"Every game asset",
         "author":"Dark Machine Games",
+        "guid":"generated-game-assets",
         "steamid":0,
-        "hidden-from-list":true
+        "hidden-from-list":true,
+        "only-in-full-game":false,
     }                   
  */
 [System.Serializable]
@@ -25,9 +27,15 @@ public class TexturePack
     public string name = string.Empty;
     public string desc = string.Empty;
     public string author = string.Empty;
-    public ulong steamid = 0;
-    [JsonProperty(propertyName:"hidden-from-list")]
+    [JsonProperty(NullValueHandling=NullValueHandling.Ignore)]
+    public ulong steamid = 0; //TODO: implement this in a ui?
+    [JsonProperty(NullValueHandling=NullValueHandling.Include)]
+    public string guid = string.Empty;
+    
+    [JsonProperty(propertyName:"hidden-from-list", NullValueHandling=NullValueHandling.Ignore)]
     public bool hiddenFromList = false;
+    [JsonProperty(propertyName:"only-in-full-game", NullValueHandling=NullValueHandling.Ignore)]
+    public bool onlyInFullGame = false;
     
     [System.NonSerialized]
     public bool IsActive = true;
@@ -35,6 +43,7 @@ public class TexturePack
     public Dictionary<string, Texture2D> Textures = [];
     [System.NonSerialized]
     public Dictionary<string, AudioClip> Sounds = [];
+    
 
     public Texture2D? GetTexture(string textureName)
     {
@@ -74,25 +83,45 @@ public class TexturePack
     
     public static TexturePack? Load(string path, bool force = false)
     {
-        string json = Path.Combine(path, "info.json");
-        if(!File.Exists(json))
+        string jsonPath = Path.Combine(path, "info.json");
+        if(!File.Exists(jsonPath))
         {
             Debug.LogWarning($"{path} doesn't have an info.json!");
             return null;
         }
             
-        TexturePack? pack = JsonConvert.DeserializeObject<TexturePack>(File.ReadAllText(json));
+        TexturePack? pack = JsonConvert.DeserializeObject<TexturePack>(File.ReadAllText(jsonPath));
         if (pack == null)
         {
-            Debug.LogWarning($"{json} isn't a valid TexturePack json!");
+            Debug.LogWarning($"{jsonPath} isn't a valid TexturePack json!");
             Debug.Log("Example: " + Plugin.DefaultJson);
             return null;
         }
 
-        if (!force && pack.hiddenFromList)
+        string prevGuid = pack.guid;
+        if(string.IsNullOrWhiteSpace(pack.guid))
+            pack.guid = pack.author.ToLower() + "." + pack.name.ToLower();
+        pack.guid = MiscUtils.CleanString(pack.guid.Replace(' ', '_'));
+
+        if (pack.guid != prevGuid)
         {
-            Debug.Log($"Not loading texture pack at {path} because it is hidden.");
-            return null;
+            string newJson = JsonConvert.SerializeObject(pack);
+            File.WriteAllText(jsonPath, newJson);
+            Debug.LogWarning($"Corrected {pack.name}'s guid: {prevGuid} -> {pack.guid}");
+        }
+        
+        if (!force)
+        {
+            if (pack.hiddenFromList)
+            {
+                Debug.Log($"Not loading texture pack at {path} because it is hidden.");
+                return null;
+            }
+            if (pack.onlyInFullGame && Plugin.IsDemo)
+            {
+                Debug.Log($"Skipping incompatible texture pack (it says it only works for the fullgame): {path}");
+                return null;
+            }
         }
             
         Debug.Log($"Texture pack at {path} is valid, loading assets...");
@@ -156,64 +185,24 @@ public class TexturePack
 
 public static class MiscUtils
 {
-    static void ExportClipData(AudioClip clip)
+    public static string CleanString(string str)
     {
-        var data = new float[clip.samples * clip.channels];
-        clip.GetData(data, 0);
-        var path = Path.Combine(Application.persistentDataPath, "Recording.wav");
-        using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
-        {
-            // The following values are based on http://soundfile.sapp.org/doc/WaveFormat/
-            var bitsPerSample = (ushort)16;
-            var chunkID = "RIFF";
-            var format = "WAVE";
-            var subChunk1ID = "fmt ";
-            var subChunk1Size = (uint)16;
-            var audioFormat = (ushort)1;
-            var numChannels = (ushort)clip.channels;
-            var sampleRate = (uint)clip.frequency;
-            var byteRate = (uint)(sampleRate * clip.channels * bitsPerSample / 8);  // SampleRate * NumChannels * BitsPerSample/8
-            var blockAlign = (ushort)(numChannels * bitsPerSample / 8); // NumChannels * BitsPerSample/8
-            var subChunk2ID = "data";
-            var subChunk2Size = (uint)(data.Length * clip.channels * bitsPerSample / 8); // NumSamples * NumChannels * BitsPerSample/8
-            var chunkSize = (uint)(36 + subChunk2Size); // 36 + SubChunk2Size
-            // Start writing the file.
-            WriteString(stream, chunkID);
-            WriteInteger(stream, chunkSize);
-            WriteString(stream, format);
-            WriteString(stream, subChunk1ID);
-            WriteInteger(stream, subChunk1Size);
-            WriteShort(stream, audioFormat);
-            WriteShort(stream, numChannels);
-            WriteInteger(stream, sampleRate);
-            WriteInteger(stream, byteRate);
-            WriteShort(stream, blockAlign);
-            WriteShort(stream, bitsPerSample);
-            WriteString(stream, subChunk2ID);
-            WriteInteger(stream, subChunk2Size);
-            foreach (var sample in data)
-            {
-                // De-normalize the samples to 16 bits.
-                var deNormalizedSample = (short)0;
-                if (sample > 0)
-                {
-                    var temp = sample * short.MaxValue;
-                    if (temp > short.MaxValue)
-                        temp = short.MaxValue;
-                    deNormalizedSample = (short)temp;
-                }
-                if (sample < 0)
-                {
-                    var temp = sample * (-short.MinValue);
-                    if (temp < short.MinValue)
-                        temp = short.MinValue;
-                    deNormalizedSample = (short)temp;
-                }
-                WriteShort(stream, (ushort)deNormalizedSample);
-            }
-        }
-    }
+        // remove all directly invalid characters
+        char[] invalidChars = Path.GetInvalidFileNameChars();
+        foreach (var invalidChar in invalidChars)
+            str = str.Replace(invalidChar.ToString(), "");
 
+        // limit chars to the ascii range so no weird characters like ∞
+        StringBuilder strBuild = new StringBuilder();
+        foreach (char c in str)
+        {
+            if(c > 127) continue;
+            strBuild.Append(c);
+        }
+        
+        return strBuild.ToString();
+    }
+    
     public static void WriteString(this Stream stream, string value)
     {
         foreach (var character in value)
@@ -314,10 +303,10 @@ public static class MiscUtils
         Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length), 0, wav, 40, 4);
         Buffer.BlockCopy(bytes, 0, wav, 44, bytes.Length);
   
-        //File.WriteAllBytes(Application.dataPath + "/my.wav", wav);
         return wav;
     }
     
+    // TODO: add mesh support
     // https://gist.github.com/MattRix/0522c27ee44c0fbbdf76d65de123eeff
     private static int StartIndex = 0;
 	

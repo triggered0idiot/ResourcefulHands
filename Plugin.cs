@@ -6,27 +6,35 @@ using System.Text;
 using BepInEx;
 using HarmonyLib;
 using Newtonsoft.Json;
+using ResourcefulHands.Patches;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
 
-[BepInPlugin(GUID, "Resourceful Hands", "0.1.0")]
-public class Plugin : BaseUnityPlugin
+[BepInPlugin(GUID, "Resourceful Hands", "1.0.0")]
+public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of logging instead of mixing Debug.Log, Logger.LogInfo and CommandConsole.Log
 {
     public const string GUID = "triggeredidiot.wkd.resourcefulhands";
     public const string DumpCommand = "dumptopack";
+    public const string ReloadCommand = "reloadpacks";
+    public const string MoveCommand = "reorderpack";
+    public const string ListCommand = "listpacks";
     public const string DefaultJson =
     """
     {
         "name":"generated-game-assets",
         "desc":"Every game asset",
         "author":"Dark Machine Games",
+        "guid":"generated-game-assets",
         "steamid":0,
-        "hidden-from-list":true
-    }                                                  
+        "hidden-from-list":true,
+        "only-in-full-game":false,
+    }                                                           
     """;
+    public const string PackPrefsName = "__ResourcefulHands_Mod_PackOrder";
 
     public const string ModifiedStr = " [modified asset]";
     
@@ -35,6 +43,22 @@ public class Plugin : BaseUnityPlugin
     public static List<TexturePack> LoadedPacks { get; internal set; } = [];
     public static TexturePack[] ActivePacks => LoadedPacks.Where(pack => pack.IsActive).ToArray();
     
+    public static bool IsDemo
+    {
+        get
+        {
+            try
+            {
+                var appid = Steamworks.SteamClient.AppId;
+#if DEBUG
+                Debug.Log($"Appid: {appid}");
+#endif
+                if (appid.Value == 3218540) // 3195790 = full game, 3218540 = demo
+                    return true;
+            }catch(Exception e){Debug.LogError(e);}
+            return false;
+        }
+    }
     
     public Harmony? Harmony { get; private set; }
 
@@ -74,6 +98,94 @@ public class Plugin : BaseUnityPlugin
         Debug.Log("Swapped: " + sound.name);
 #endif
     }
+
+    internal static void SavePackOrder()
+    {
+        string[] currentPacksState = new string[LoadedPacks.Count];
+        for (int i = 0; i < LoadedPacks.Count; i++)
+        {
+            var pack = LoadedPacks[i];
+            currentPacksState[i] = pack.guid;
+        }
+        string listJson = JsonConvert.SerializeObject(currentPacksState);
+        PlayerPrefs.SetString(PackPrefsName, listJson);
+    }
+    internal static void LoadPackOrder()
+    {
+        string listJson = PlayerPrefs.GetString(PackPrefsName, "");
+        if (!string.IsNullOrWhiteSpace(listJson))
+        {
+            string[]? previousPacksState = JsonConvert.DeserializeObject<string[]>(listJson);
+            if(previousPacksState == null) return;
+            
+            TexturePack[] previousPacks = LoadedPacks.ToArray();
+            TexturePack?[] newPacks = new TexturePack[previousPacks.Length];
+            for (int i = 0; i < newPacks.Length; i++)
+                newPacks[i] = null;
+            
+            for (int i = 0; i < previousPacksState.Length; i++)
+            {
+                string guid = previousPacksState[i];
+                TexturePack? pack = previousPacks.FirstOrDefault(p => p.guid == guid);
+                if (pack != null)
+                    newPacks[i] = pack;
+            }
+
+            List<TexturePack> finalPacks = [];
+            foreach (var p in newPacks)
+                if(p != null) finalPacks.Add(p);
+            // incase we missed any or replaced them just add them to the end
+            foreach(var p in previousPacks)
+                if(!finalPacks.Contains(p)) finalPacks.Add(p);
+            
+            LoadedPacks = finalPacks;
+            // save the new order
+            SavePackOrder();
+        }
+    }
+
+    internal static void ReloadPacks_Internal(Action<string> log)
+    {
+        SavePackOrder();
+        LoadedPacks.Clear();
+        log("Loading texture packs...");
+        string[] paths = Directory.GetDirectories(ConfigFolder, "*", SearchOption.TopDirectoryOnly);
+        foreach (string path in paths)
+        {
+            try
+            {
+                log($"Loading texture pack: {path}");
+                TexturePack? pack = TexturePack.Load(path);
+                if(pack == null)
+                    throw new NullReferenceException($"Failed to load!");
+                
+                LoadedPacks.Add(pack);
+                log($"Loaded!");
+            }
+            catch (Exception e)
+            { log($"Failed to load!"); Instance.Logger.LogError(e); }
+        }
+        log("Re-ordering to user order...");
+        LoadPackOrder();
+        
+        log($"Loaded {LoadedPacks.Count}/{paths.Length} texture packs");
+        
+        // attempt to refresh previously loaded textures
+        RefreshTextures();
+    }
+
+    internal static void RefreshTextures()
+    {
+        SpriteRendererPatches._customSpriteCache.Clear();
+        
+        // do some manipulation to the variables to trigger the harmony patches to replace them
+        foreach (var renderer in FindObjectsOfType<Renderer>(includeInactive: true))
+        { var mats = renderer.sharedMaterials; mats.ToString(); }
+        foreach (var audioSource in FindObjectsOfType<AudioSource>(includeInactive: true))
+        { audioSource.clip = audioSource.clip; }
+        foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
+        { spriteR.sprite = spriteR.sprite; }
+    }
     
     public void Awake()
     {
@@ -84,50 +196,100 @@ public class Plugin : BaseUnityPlugin
         
         Harmony = new Harmony(GUID);
         Harmony.PatchAll();
-        
-        LoadedPacks.Clear();
-        Logger.LogInfo("Loading texture packs...");
-        string[] paths = Directory.GetDirectories(ConfigFolder, "*", SearchOption.TopDirectoryOnly);
-        foreach (string path in paths)
-        {
-            try
-            {
-                Logger.LogInfo($"Loading texture pack: {path}");
-                TexturePack? pack = TexturePack.Load(path);
-                if(pack == null)
-                    throw new NullReferenceException($"Failed to load texture pack: {path}");
-                else
-                {
-                    if (pack.hiddenFromList)
-                    {
-                        Logger.LogInfo($"Skipping hidden texture pack: {path}");
-                        if(LoadedPacks.Contains(pack))
-                            LoadedPacks.Remove(pack);
-                        continue;
-                    }
-                    
-                    LoadedPacks.Add(pack);
-                    Logger.LogInfo($"Loaded texture pack: {path}");
-                }
-            }
-            catch (Exception e)
-            { Logger.LogError(e); }
-        }
-        Logger.LogInfo($"Loaded {LoadedPacks.Count}/{paths.Length} texture packs");
 
-        bool hasLoadedCommands = false;
         SceneManager.sceneLoaded += (arg0, mode) =>
         {
+            if (SteamManager.connected || arg0.name.ToLower().Contains("main-menu"))
+                ReloadPacks_Internal(Debug.Log);
+            
             var ccInst = CommandConsole.instance;
-            if (ccInst != null && !hasLoadedCommands)
+            if (ccInst)
             {
-                hasLoadedCommands = true;
+                CommandConsole.RemoveCommand(DumpCommand);
+                CommandConsole.RemoveCommand(ReloadCommand);
+                CommandConsole.RemoveCommand(MoveCommand);
+                CommandConsole.RemoveCommand(ListCommand);
+                
                 ccInst.RegisterCommand(DumpCommand, DumpAllToPack, false);
+                ccInst.RegisterCommand(ReloadCommand, ReloadPacks, false);
+                ccInst.RegisterCommand(MoveCommand, MovePacks, false);
+                ccInst.RegisterCommand(ListCommand, ListPacks, false);
             }
-
-            foreach (var renderer in FindObjectsOfType<Renderer>(includeInactive: true))
-            { var mats = renderer.sharedMaterials; }
+            RefreshTextures();
         };
+    }
+
+    private static void MovePacks(string[] args)
+    {
+        const string helpText = $"Usage: {MoveCommand} [pack guid/pack index] [up/down]\nResource packs at the bottom of the loaded list will override textures at the top, use this command to move a texture pack up or down the list.";
+        if (args.Length != 2)
+        {
+            CommandConsole.LogError("Invalid number of arguments!");
+            CommandConsole.Log(helpText);
+            return;
+        }
+
+        string packName;
+        TexturePack? pack = null;
+        if (int.TryParse(args[0], out int index))
+        {
+            try // too tried rn to do this properly :sob:
+            {  pack = LoadedPacks[index]; }catch{/**/}
+            
+            if (pack == null)
+            {
+                CommandConsole.LogError($"Invalid first argument!\nThe resource pack at index {index} doesn't exist!");
+                CommandConsole.Log(helpText);
+                return;
+            }
+        }
+        else
+        {
+            packName = args[0].ToLower();
+            pack = LoadedPacks.FirstOrDefault(p => p.guid == packName);
+            if (pack == null)
+            {
+                CommandConsole.LogError($"Invalid first argument!\nThe resource pack with guid '{packName}' doesn't exist!");
+                CommandConsole.Log(helpText);
+                return;
+            }
+        }
+        
+        int packIndex = LoadedPacks.FindIndex(p => p == pack);
+        
+        string dir = args[1].ToLower();
+        if (dir is not ("up" or "down" or "u" or "d"))
+        {
+            CommandConsole.LogError("Invalid second argument!\nExpected: up or down");
+            CommandConsole.Log(helpText);
+            return;
+        }
+        
+        bool isUp = dir is "up" or "u";
+        int nextPackIndex = 0;
+        nextPackIndex = isUp ? Math.Clamp(packIndex - 1, 0, LoadedPacks.Count - 1) : Math.Clamp(packIndex + 1, 0, LoadedPacks.Count - 1);
+        
+        TexturePack previousPack = LoadedPacks[nextPackIndex];
+        LoadedPacks[nextPackIndex] = pack;
+        LoadedPacks[packIndex] = previousPack;
+        
+        CommandConsole.Log("Reloading packs...");
+        ReloadPacks_Internal(Debug.Log);
+        CommandConsole.Log($"Moved {pack.name} {'{'}{pack.guid}{'}'} {(isUp ? "up" : "down")} successfully!");
+    }
+    
+    private static void ListPacks(string[] args)
+    {
+        for (int i = 0; i < LoadedPacks.Count; i++)
+        {
+            var pack = LoadedPacks[i];
+            CommandConsole.Log($"{(!pack.IsActive ? "[NOT LOADED] " : $"[{i}] ")}{pack.name} by {pack.author}\n-- description:\n{pack.desc}\n-- guid: '{pack.guid}'\n____", true);
+        }
+    }
+    
+    private static void ReloadPacks(string[] args)
+    {
+        ReloadPacks_Internal(str => CommandConsole.Log(str, true));
     }
 
     private static void DumpAllToPack(string[] args)
