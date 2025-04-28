@@ -35,7 +35,6 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
     }                                                           
     """;
     public const string PackPrefsName = "__ResourcefulHands_Mod_PackOrder";
-
     public const string ModifiedStr = " [modified asset]";
     
     public static Plugin Instance { get; private set; } = null!;
@@ -66,7 +65,11 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
     {
         Texture2D? texture = null;
         foreach (var pack in ActivePacks)
-            texture = pack.GetTexture(textureName);
+        {
+            var myTexture = pack.GetTexture(textureName);
+            if(myTexture != null)
+                texture = myTexture;
+        }
 
         return texture;
     }
@@ -74,29 +77,13 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
     {
         AudioClip? clip = null;
         foreach (var pack in ActivePacks)
-            clip = pack.GetSound(soundName);
+        {
+            var myClip = pack.GetSound(soundName);
+            if(myClip != null)
+                clip = myClip;
+        }
 
         return clip;
-    }
-    public static void ReplaceTextureFromPacks(Texture2D texture, bool modifyName = true)
-    {
-        foreach (var pack in ActivePacks)
-            pack.ReplaceTexture(texture);
-        if (modifyName)
-            texture.name += " [modified]";
-#if DEBUG
-        Debug.Log("Swapped: " + texture.name);
-#endif
-    }
-    public static void ReplaceSoundFromPacks(AudioClip sound, bool modifyName = true)
-    {
-        foreach (var pack in ActivePacks)
-            pack.ReplaceSound(sound);
-        if (modifyName)
-            sound.name += " [modified]";
-#if DEBUG
-        Debug.Log("Swapped: " + sound.name);
-#endif
     }
 
     internal static void SavePackOrder()
@@ -309,6 +296,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         
         CommandConsole.Log("Dumping all resources to a template texture pack [this will take some time]...", true);
         List<Texture2D> textures = [];
+        List<Texture2D> spriteTextures = [];
         List<AudioClip> sounds = [];
         
         // get assets from current scene
@@ -316,13 +304,17 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         textures.AddRange(texture2Ds.Where(tex => !textures.Contains(tex)));
         AudioClip[] audioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
         sounds.AddRange(audioClips.Where(sound => !sounds.Contains(sound)));
-
+        Sprite[] sprites = Resources.FindObjectsOfTypeAll<Sprite>();
+        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !textures.Contains(sprite.texture)).Select(sprite => sprite.texture));
+        
         CommandConsole.Log("Loading Playground [to extract assets]", true);
         SceneManager.LoadScene("Playground");
         texture2Ds = Resources.FindObjectsOfTypeAll<Texture2D>();
         textures.AddRange(texture2Ds.Where(tex => !textures.Contains(tex)));
         audioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
         sounds.AddRange(audioClips.Where(sound => !sounds.Contains(sound)));
+        sprites = Resources.FindObjectsOfTypeAll<Sprite>();
+        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !textures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
         CommandConsole.Log("Loading Training-Level [to extract assets]", true);
         SceneManager.LoadScene("Training-Level");
@@ -330,6 +322,8 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         textures.AddRange(texture2Ds.Where(tex => !textures.Contains(tex)));
         audioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
         sounds.AddRange(audioClips.Where(sound => !sounds.Contains(sound)));
+        sprites = Resources.FindObjectsOfTypeAll<Sprite>();
+        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !textures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
         CommandConsole.Log("Loading Main-Menu [to extract assets and finish]", true);
         SceneManager.LoadScene("Main-Menu");
@@ -337,34 +331,40 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         textures.AddRange(texture2Ds.Where(tex => !textures.Contains(tex)));
         audioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
         sounds.AddRange(audioClips.Where(sound => !sounds.Contains(sound)));
+        sprites = Resources.FindObjectsOfTypeAll<Sprite>();
+        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !textures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
         CommandConsole.Log("Packing assets...", true);
         
         int texturesAmnt = textures.Count;
+        int spriteTexturesAmnt = spriteTextures.Count;
         int soundsAmnt = sounds.Count;
         
-        string path = Path.Combine(ConfigFolder, $"extracted-assets-{texturesAmnt+soundsAmnt}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+        string path = Path.Combine(ConfigFolder, $"extracted-assets-{texturesAmnt+soundsAmnt+spriteTexturesAmnt}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
         if (!Directory.Exists(path))
             Directory.CreateDirectory(path);
         string texturesPath = Path.Combine(path, "Textures");
+        string spriteTexturesPath = Path.Combine(texturesPath, "Sprites");
         string soundsPath = Path.Combine(path, "Sounds");
         if (!Directory.Exists(texturesPath))
             Directory.CreateDirectory(texturesPath);
+        if (!Directory.Exists(spriteTexturesPath))
+            Directory.CreateDirectory(spriteTexturesPath);
         if (!Directory.Exists(soundsPath))
             Directory.CreateDirectory(soundsPath);
 
         StringBuilder textureInfo = new StringBuilder();
+        StringBuilder spriteTextureInfo = new StringBuilder();
         StringBuilder audioInfo = new StringBuilder();
         textureInfo.AppendLine("-- ingame textures list --");
+        spriteTextureInfo.AppendLine("-- ingame sprite textures list --");
         audioInfo.AppendLine("-- ingame sounds list --");
         int savedTextures = 0;
         int savedSounds = 0;
-        
-        for (int i = 0; i < texturesAmnt; i++)
+        int savedSprites = 0;
+
+        bool ExportTexture(Texture2D texture)
         {
-            var texture = textures[i];
-            CommandConsole.Log($"Saving textures ({i}/{texturesAmnt})", true);
-            textureInfo.Append(texture.name);
             bool saved = false;
             try
             {
@@ -389,7 +389,6 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
 
                         byte[] rb = readableTexture.EncodeToPNG();
                         File.WriteAllBytes(Path.Combine(texturesPath, texture.name + ".png"), rb);
-                        savedTextures++;
                         saved = true;
                     }catch{/**/}
                     
@@ -400,7 +399,6 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 {
                     byte[] b = texture.EncodeToPNG();
                     File.WriteAllBytes(Path.Combine(texturesPath, texture.name + ".png"), b);
-                    savedTextures++;
                     saved = true;
                 }
             }
@@ -408,9 +406,46 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             {
                 CommandConsole.LogError($"{texture.name} failed because {e.Message}");
             }
+
+            return saved;
+        }
+        
+        for (int i = 0; i < texturesAmnt; i++)
+        {
+            var texture = textures[i];
+            CommandConsole.Log($"Saving textures ({i}/{texturesAmnt})", true);
+            textureInfo.Append(texture.name);
+            bool saved = false;
+            try
+            {
+                saved = ExportTexture(texture);
+            }
+            catch (Exception e)
+            {
+                CommandConsole.LogError($"{texture.name} failed because {e.Message}");
+            }
+
+            if (saved) savedTextures++;
             textureInfo.AppendLine(saved ? "" : " [failed to extract]");
         }
+        for (int i = 0; i < spriteTexturesAmnt; i++)
+        {
+            var spriteTexture = spriteTextures[i];
+            CommandConsole.Log($"Saving textures ({i}/{spriteTexturesAmnt})", true);
+            spriteTextureInfo.Append(spriteTexture.name);
+            bool saved = false;
+            try
+            {
+                saved = ExportTexture(spriteTexture);
+            }
+            catch (Exception e)
+            {
+                CommandConsole.LogError($"{spriteTexture.name} failed because {e.Message}");
+            }
 
+            if (saved) savedSprites++;
+            spriteTextureInfo.AppendLine(saved ? "" : " [failed to extract]");
+        }
         for (int i = 0; i < soundsAmnt; i++)
         {
             var clip = sounds[i];
@@ -494,9 +529,11 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         File.WriteAllText(Path.Combine(path, "info.json"), DefaultJson);
         // export info
         File.WriteAllText(Path.Combine(path, "textures_list.txt"), textureInfo.ToString());
+        File.WriteAllText(Path.Combine(path, "sprite_textures_list.txt"), spriteTextureInfo.ToString());
         File.WriteAllText(Path.Combine(path, "audio_list.txt"), audioInfo.ToString());
         
         CommandConsole.Log($"Successfully saved {savedTextures} of {texturesAmnt} textures!", true);
+        CommandConsole.Log($"Successfully saved {savedSprites} of {spriteTexturesAmnt} sprite textures!", true);
         CommandConsole.Log($"Successfully saved {savedSounds} of {soundsAmnt} sounds!", true);
         CommandConsole.Log($"Packed all assets to '{path}'", true);
     }

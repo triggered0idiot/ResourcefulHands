@@ -19,6 +19,7 @@ namespace ResourcefulHands;
         "steamid":0,
         "hidden-from-list":true,
         "only-in-full-game":false,
+        "format-version":1
     }                   
  */
 [System.Serializable]
@@ -36,7 +37,11 @@ public class TexturePack
     public bool hiddenFromList = false;
     [JsonProperty(propertyName:"only-in-full-game", NullValueHandling=NullValueHandling.Ignore)]
     public bool onlyInFullGame = false;
+    [JsonProperty(propertyName:"format-version", NullValueHandling=NullValueHandling.Ignore)]
+    public int texturePackVersion = CurrentFormatVersion;
     
+    [System.NonSerialized]
+    public const int CurrentFormatVersion = 1;
     [System.NonSerialized]
     public bool IsActive = true;
     [System.NonSerialized]
@@ -44,7 +49,6 @@ public class TexturePack
     [System.NonSerialized]
     public Dictionary<string, AudioClip> Sounds = [];
     
-
     public Texture2D? GetTexture(string textureName)
     {
         Textures.TryGetValue(textureName, out var texture);
@@ -97,19 +101,6 @@ public class TexturePack
             Debug.Log("Example: " + Plugin.DefaultJson);
             return null;
         }
-
-        string prevGuid = pack.guid;
-        if(string.IsNullOrWhiteSpace(pack.guid))
-            pack.guid = pack.author.ToLower() + "." + pack.name.ToLower();
-        pack.guid = MiscUtils.CleanString(pack.guid.Replace(' ', '_'));
-
-        if (pack.guid != prevGuid)
-        {
-            string newJson = JsonConvert.SerializeObject(pack);
-            File.WriteAllText(jsonPath, newJson);
-            Debug.LogWarning($"Corrected {pack.name}'s guid: {prevGuid} -> {pack.guid}");
-        }
-        
         if (!force)
         {
             if (pack.hiddenFromList)
@@ -123,6 +114,21 @@ public class TexturePack
                 return null;
             }
         }
+        
+        if(pack.texturePackVersion != CurrentFormatVersion)
+            Debug.LogWarning($"Texture pack at {path} is format version {pack.texturePackVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
+
+        string prevGuid = pack.guid;
+        if(string.IsNullOrWhiteSpace(pack.guid))
+            pack.guid = pack.author.ToLower() + "." + pack.name.ToLower();
+        pack.guid = MiscUtils.CleanString(pack.guid.Replace(' ', '_'));
+
+        if (pack.guid != prevGuid)
+        {
+            string newJson = JsonConvert.SerializeObject(pack);
+            File.WriteAllText(jsonPath, newJson);
+            Debug.LogWarning($"Corrected {pack.name}'s guid: {prevGuid} -> {pack.guid}");
+        }
             
         Debug.Log($"Texture pack at {path} is valid, loading assets...");
         string texturesFolder = Path.Combine(path, "Textures");
@@ -132,9 +138,9 @@ public class TexturePack
         string[] soundFiles = [];
 
         if (Directory.Exists(texturesFolder))
-            textureFiles = Directory.GetFiles(texturesFolder, "*.*", SearchOption.TopDirectoryOnly);
+            textureFiles = Directory.GetFiles(texturesFolder, "*.*", SearchOption.AllDirectories);
         if (Directory.Exists(soundsFolder))
-            soundFiles = Directory.GetFiles(soundsFolder, "*.*", SearchOption.TopDirectoryOnly);
+            soundFiles = Directory.GetFiles(soundsFolder, "*.*", SearchOption.AllDirectories);
 
         int textureCount = textureFiles.Length;
         int soundCount = soundFiles.Length;
