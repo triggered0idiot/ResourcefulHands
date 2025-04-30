@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
 
-[BepInPlugin(GUID, "Resourceful Hands", "1.0.0")]
+[BepInPlugin(GUID, "Resourceful Hands", "0.9.0")] // Resourceful Hands
 public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of logging instead of mixing Debug.Log, Logger.LogInfo and CommandConsole.Log
 {
     public const string GUID = "triggeredidiot.wkd.resourcefulhands";
@@ -22,6 +22,8 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
     public const string ReloadCommand = "reloadpacks";
     public const string MoveCommand = "reorderpack";
     public const string ListCommand = "listpacks";
+    public const string EnableCommand = "enablepack";
+    public const string DisableCommand = "disablepack";
     public const string DefaultJson =
     """
     {
@@ -32,9 +34,11 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         "steamid":0,
         "hidden-from-list":true,
         "only-in-full-game":false,
+        "format-version":1
     }                                                           
     """;
     public const string PackPrefsName = "__ResourcefulHands_Mod_PackOrder";
+    public const string DisabledPacksPrefsName = "__ResourcefulHands_Mod_DisabledPacks";
     public const string ModifiedStr = " [modified asset]";
     
     public static Plugin Instance { get; private set; } = null!;
@@ -70,7 +74,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             if(myTexture != null)
                 texture = myTexture;
         }
-
+        
         return texture;
     }
     public static AudioClip? GetSoundFromPacks(string soundName)
@@ -86,6 +90,31 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         return clip;
     }
 
+    internal static void SaveDisabledPacks()
+    {
+        List<string> disabledPacks = [];
+        foreach (var pack in LoadedPacks)
+        {
+            if (!pack.IsActive)
+                disabledPacks.Add(pack.guid);
+        }
+        string listJson = JsonConvert.SerializeObject(disabledPacks.ToArray());
+        PlayerPrefs.SetString(DisabledPacksPrefsName, listJson);
+    }
+    internal static void LoadDisabledPacks()
+    {
+        string listJson = PlayerPrefs.GetString(DisabledPacksPrefsName, "");
+        if(string.IsNullOrWhiteSpace(listJson)) return;
+        string[]? disabledPacks = JsonConvert.DeserializeObject<string[]>(listJson);
+        if(disabledPacks == null || disabledPacks.Length == 0) return;
+        
+        foreach (var disabledPackGuid in disabledPacks)
+        {
+            foreach (var pack in LoadedPacks.Where(pack => pack.guid == disabledPackGuid))
+                pack.IsActive = false;
+        }
+    }
+    
     internal static void SavePackOrder()
     {
         string[] currentPacksState = new string[LoadedPacks.Count];
@@ -133,7 +162,11 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
 
     internal static void ReloadPacks_Internal(Action<string> log)
     {
-        SavePackOrder();
+        if (LoadedPacks.Count != 0)
+        {
+            SavePackOrder();
+            SaveDisabledPacks();
+        }
         LoadedPacks.Clear();
         log("Loading texture packs...");
         string[] paths = Directory.GetDirectories(ConfigFolder, "*", SearchOption.TopDirectoryOnly);
@@ -143,19 +176,51 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             {
                 log($"Loading texture pack: {path}");
                 TexturePack? pack = TexturePack.Load(path);
-                if(pack == null)
+                if (pack == null)
                     throw new NullReferenceException($"Failed to load!");
-                
+
                 LoadedPacks.Add(pack);
                 log($"Loaded!");
             }
             catch (Exception e)
-            { log($"Failed to load!"); Instance.Logger.LogError(e); }
+            {
+                log($"Failed to load!");
+                Instance.Logger.LogError(e);
+            }
         }
+
         log("Re-ordering to user order...");
         LoadPackOrder();
-        
+        log("Disabling packs that should be disabled...");
+        LoadDisabledPacks();
+
         log($"Loaded {LoadedPacks.Count}/{paths.Length} texture packs");
+
+        // reload the old textures
+        /* TODO: finish implementation 
+        List<Material> allMaterials = Resources.FindObjectsOfTypeAll<Material>().ToList();
+        foreach (var renderer in FindObjectsOfType<Renderer>(includeInactive: true))
+            allMaterials.AddRange(renderer.sharedMaterials.Where(mat => !allMaterials.Contains(mat)));
+        
+        int mainTexID = Shader.PropertyToID("_MainTex");
+        foreach (var material in allMaterials)
+        {
+            if(material == null) continue;
+            if(!material.HasProperty(mainTexID)) continue;
+
+            try
+            {
+                Texture mainTexture = MaterialPatches.GetMainTexture(material);
+                if (mainTexture == null) continue;
+                if (!MaterialPatches.previousTextures.TryGetValue(mainTexture.name, out var ogTexture)) continue;
+            
+                MaterialPatches.SetMainTexture(material, ogTexture);
+#if DEBUG
+                Debug.Log($"Fixed {mainTexture.name}[{mainTexture}] back to {ogTexture.name}[{ogTexture}]");
+#endif
+            }catch{}
+        }
+        */
         
         // attempt to refresh previously loaded textures
         RefreshTextures();
@@ -166,8 +231,14 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         SpriteRendererPatches._customSpriteCache.Clear();
         
         // do some manipulation to the variables to trigger the harmony patches to replace them
+        List<Material> allMaterials = Resources.FindObjectsOfTypeAll<Material>().ToList();
         foreach (var renderer in FindObjectsOfType<Renderer>(includeInactive: true))
-        { var mats = renderer.sharedMaterials; mats.ToString(); }
+            allMaterials.AddRange(renderer.sharedMaterials.Where(mat => !allMaterials.Contains(mat)));
+        int mainTex = Shader.PropertyToID("_MainTex");
+        foreach (var material in allMaterials)
+            if(material != null && material.HasTexture(mainTex))
+                material.mainTexture = material.mainTexture;
+        
         foreach (var audioSource in FindObjectsOfType<AudioSource>(includeInactive: true))
         { audioSource.clip = audioSource.clip; }
         foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
@@ -187,7 +258,10 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         SceneManager.sceneLoaded += (arg0, mode) =>
         {
             if (SteamManager.connected || arg0.name.ToLower().Contains("main-menu"))
+            {
+                LoadedPacks.Clear();
                 ReloadPacks_Internal(Debug.Log);
+            }
             
             var ccInst = CommandConsole.instance;
             if (ccInst)
@@ -196,11 +270,15 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 CommandConsole.RemoveCommand(ReloadCommand);
                 CommandConsole.RemoveCommand(MoveCommand);
                 CommandConsole.RemoveCommand(ListCommand);
+                CommandConsole.RemoveCommand(EnableCommand);
+                CommandConsole.RemoveCommand(DisableCommand);
                 
                 ccInst.RegisterCommand(DumpCommand, DumpAllToPack, false);
                 ccInst.RegisterCommand(ReloadCommand, ReloadPacks, false);
                 ccInst.RegisterCommand(MoveCommand, MovePacks, false);
                 ccInst.RegisterCommand(ListCommand, ListPacks, false);
+                ccInst.RegisterCommand(EnableCommand, EnablePack, false);
+                ccInst.RegisterCommand(DisableCommand, DisablePack, false);
             }
             RefreshTextures();
         };
@@ -270,13 +348,72 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         for (int i = 0; i < LoadedPacks.Count; i++)
         {
             var pack = LoadedPacks[i];
-            CommandConsole.Log($"{(!pack.IsActive ? "[NOT LOADED] " : $"[{i}] ")}{pack.name} by {pack.author}\n-- description:\n{pack.desc}\n-- guid: '{pack.guid}'\n____", true);
+            CommandConsole.Log($"{(!pack.IsActive ? "[DISABLED] " : $"[{i}] ")}{pack.name} by {pack.author}\n-- description:\n{pack.desc}\n-- guid: '{pack.guid}'\n____", true);
         }
     }
     
     private static void ReloadPacks(string[] args)
     {
         ReloadPacks_Internal(str => CommandConsole.Log(str, true));
+    }
+
+    private static TexturePack? GetPackFromArgs(string[] args, Action<string> logErr)
+    {
+        string packName;
+        TexturePack? pack = null;
+        if (int.TryParse(args[0], out int index))
+        {
+            try // too tried rn to do this properly :sob:
+            {  pack = LoadedPacks[index]; }catch{/**/}
+            
+            if (pack == null)
+            {
+                logErr($"Invalid first argument!\nThe resource pack at index {index} doesn't exist!");
+                return null;
+            }
+        }
+        else
+        {
+            packName = args[0].ToLower();
+            pack = LoadedPacks.FirstOrDefault(p => p.guid == packName);
+            if (pack == null)
+            {
+                logErr($"Invalid first argument!\nThe resource pack with guid '{packName}' doesn't exist!");
+                return null;
+            }
+        }
+
+        return pack;
+    }
+    private static void DisablePack(string[] args)
+    {
+        const string helpText = $"Usage: {DisableCommand} [pack guid/pack index]\nDisables a resource pack.";
+        TexturePack? pack = GetPackFromArgs(args, CommandConsole.LogError);
+        if (pack == null)
+        {
+            CommandConsole.Log(helpText, true);
+            return;
+        }
+        
+        pack.IsActive = false;
+        CommandConsole.Log("Reloading packs...");
+        ReloadPacks_Internal(Debug.Log);
+        CommandConsole.Log($"Disabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
+    }
+    private static void EnablePack(string[] args)
+    {
+        const string helpText = $"Usage: {EnableCommand} [pack guid/pack index]\nEnables a resource pack.";
+        TexturePack? pack = GetPackFromArgs(args, CommandConsole.LogError);
+        if (pack == null)
+        {
+            CommandConsole.Log(helpText, true);
+            return;
+        }
+
+        pack.IsActive = true;
+        CommandConsole.Log("Reloading packs...");
+        ReloadPacks_Internal(Debug.Log);
+        CommandConsole.Log($"Enabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
     }
 
     private static void DumpAllToPack(string[] args)
@@ -305,7 +442,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         AudioClip[] audioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
         sounds.AddRange(audioClips.Where(sound => !sounds.Contains(sound)));
         Sprite[] sprites = Resources.FindObjectsOfTypeAll<Sprite>();
-        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !textures.Contains(sprite.texture)).Select(sprite => sprite.texture));
+        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !spriteTextures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
         CommandConsole.Log("Loading Playground [to extract assets]", true);
         SceneManager.LoadScene("Playground");
@@ -314,7 +451,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         audioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
         sounds.AddRange(audioClips.Where(sound => !sounds.Contains(sound)));
         sprites = Resources.FindObjectsOfTypeAll<Sprite>();
-        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !textures.Contains(sprite.texture)).Select(sprite => sprite.texture));
+        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !spriteTextures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
         CommandConsole.Log("Loading Training-Level [to extract assets]", true);
         SceneManager.LoadScene("Training-Level");
@@ -323,7 +460,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         audioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
         sounds.AddRange(audioClips.Where(sound => !sounds.Contains(sound)));
         sprites = Resources.FindObjectsOfTypeAll<Sprite>();
-        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !textures.Contains(sprite.texture)).Select(sprite => sprite.texture));
+        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !spriteTextures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
         CommandConsole.Log("Loading Main-Menu [to extract assets and finish]", true);
         SceneManager.LoadScene("Main-Menu");
@@ -332,7 +469,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         audioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
         sounds.AddRange(audioClips.Where(sound => !sounds.Contains(sound)));
         sprites = Resources.FindObjectsOfTypeAll<Sprite>();
-        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !textures.Contains(sprite.texture)).Select(sprite => sprite.texture));
+        spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !spriteTextures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
         CommandConsole.Log("Packing assets...", true);
         

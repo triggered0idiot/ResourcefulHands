@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using Sirenix.Utilities;
 using UnityEngine;
@@ -139,7 +140,7 @@ public static class AudioSourcePatches
         
         if(__instance == null) return;
         isSelf = true;
-        if(__instance.clip == null) return;
+        if (__instance.clip == null) return;
         
         isSelf = true;
         var newClip = Plugin.GetSoundFromPacks(__instance.clip.name);
@@ -175,8 +176,22 @@ public static class AudioSourcePatches
 public static class MaterialPatches
 {
     private static bool isSelf = false;
+    internal static Dictionary<string, Texture> previousTextures = new();
     private static readonly int MainTex = Shader.PropertyToID("_MainTex");
 
+    // TODO: add .GetTexture and .SetTexture patches
+
+    public static void SetMainTexture(Material m, Texture texture)
+    {
+        isSelf = true;
+        m.mainTexture = texture;
+    }
+    public static Texture GetMainTexture(Material m)
+    {
+        isSelf = true;
+        return m.mainTexture;
+    }
+    
     [HarmonyPatch(methodName:"get_mainTexture")]
     [HarmonyPostfix]
     private static void Getter_Postfix(Material __instance, ref Texture __result)
@@ -185,13 +200,18 @@ public static class MaterialPatches
         { isSelf = false; return; }
         
         if(__instance == null) return;
-        if(!__instance.HasProperty(MainTex)) return;
+        if(!__instance.HasTexture(MainTex)) return;
+        
         isSelf = true;
-        if(__instance.mainTexture == null) return;
-        isSelf = true;
-        var texture = Plugin.GetTextureFromPacks(__instance.mainTexture.name);
+        var mainTex = __instance.mainTexture;
+        if(mainTex == null) return;
+        
+        var texture = Plugin.GetTextureFromPacks(mainTex.name);
         if(texture == null) return;
-        isSelf = true;
+        texture = Object.Instantiate(texture);
+        texture.name = mainTex.name + " [replaced]"; // change name to help with restoration?
+        
+        previousTextures.TryAdd(mainTex.name, mainTex);
         __instance.mainTexture = texture;
     }
 
@@ -203,13 +223,18 @@ public static class MaterialPatches
         { isSelf = false; return; }
         
         if(__instance == null) return;
-        if(!__instance.HasProperty(MainTex)) return;
+        if(!__instance.HasTexture(MainTex)) return;
+        
         isSelf = true;
-        if(__instance.mainTexture == null) return;
-        isSelf = true;
-        var texture = Plugin.GetTextureFromPacks(__instance.mainTexture.name);
+        var mainTex = __instance.mainTexture;
+        if(mainTex == null) return;
+        
+        var texture = Plugin.GetTextureFromPacks(mainTex.name);
         if(texture == null) return;
-        isSelf = true;
+        texture = Object.Instantiate(texture);
+        texture.name = mainTex.name + " [replaced]"; // change name to help with restoration?
+        
+        previousTextures.TryAdd(mainTex.name, mainTex);
         __instance.mainTexture = texture;
     }
 }
@@ -234,7 +259,9 @@ public static class RendererPatches
         foreach (var material in __instance.sharedMaterials)
         {
             if(!material.HasProperty(MainTex)) continue;
+#if DEBUG
             Debug.Log("invoking material.mainTexture [passing to patch]");
+#endif
             var texture = material.mainTexture;
         }
     }

@@ -49,6 +49,8 @@ public class TexturePack
     [System.NonSerialized]
     public Dictionary<string, AudioClip> Sounds = [];
     
+    // considering cloning these values, TODO: test if the textures and sounds are safe to be shared
+    
     public Texture2D? GetTexture(string textureName)
     {
         Textures.TryGetValue(textureName, out var texture);
@@ -59,30 +61,6 @@ public class TexturePack
     {
         Sounds.TryGetValue(soundName, out var clip);
         return clip;
-    }
-
-    public void ReplaceTexture(Texture2D texture)
-    {
-        Texture2D? newTexture = GetTexture(texture.name);
-        if (newTexture != null)
-        {
-            texture.SetPixels(newTexture.GetPixels(0, 0, texture.width, texture.height));
-            texture.Apply(true);
-        }
-    }
-    public void ReplaceSound(AudioClip clip)
-    {
-        AudioClip? newClip = GetSound(clip.name);
-        if (newClip != null)
-        {
-            var data = new float[newClip.samples * newClip.channels];
-            if (!newClip.GetData(data, 0))
-            {
-                Debug.LogError($"Failed to get custom sound data for {newClip.name}!");
-                return;
-            }
-            clip.SetData(data, 0);
-        }
     }
     
     public static TexturePack? Load(string path, bool force = false)
