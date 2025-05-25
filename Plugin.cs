@@ -177,7 +177,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 log($"Loading texture pack: {path}");
                 TexturePack? pack = TexturePack.Load(path);
                 if (pack == null)
-                    throw new NullReferenceException($"Failed to load!");
+                    throw new NullReferenceException($"Failed to load pack at {path}!");
 
                 LoadedPacks.Add(pack);
                 log($"Loaded!");
@@ -222,8 +222,9 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         }
         */
         
-        // attempt to refresh previously loaded textures
+        // attempt to refresh previously files
         RefreshTextures();
+        RefreshSounds();
     }
 
     internal static void RefreshTextures()
@@ -239,10 +240,18 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             if(material != null && material.HasTexture(mainTex))
                 material.mainTexture = material.mainTexture;
         
-        foreach (var audioSource in FindObjectsOfType<AudioSource>(includeInactive: true))
-        { audioSource.clip = audioSource.clip; }
         foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
         { spriteR.sprite = spriteR.sprite; }
+    }
+    internal static void RefreshSounds()
+    {
+        // do some manipulation to the variables to trigger the harmony patches to replace them
+        List<AudioSource> allAudioSources = Resources.FindObjectsOfTypeAll<AudioSource>().ToList();
+        
+        foreach (var audioSource in allAudioSources)
+        { audioSource.clip = audioSource.clip; }
+        foreach (var audioSource in Object.FindObjectsOfType<AudioSource>(true))
+        { audioSource.clip = audioSource.clip; }
     }
     
     public void Awake()
@@ -281,6 +290,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 ccInst.RegisterCommand(DisableCommand, DisablePack, false);
             }
             RefreshTextures();
+            RefreshSounds();
         };
     }
 

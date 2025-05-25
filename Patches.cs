@@ -128,9 +128,39 @@ public static class AudioSourcePatches
         {
             isSelf = true;
             __instance.clip = newClip;
+            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
+            {
+                isSelf = true;
+                __instance.Play();
+            }
         }
     }
 
+    [HarmonyPatch(methodName:"set_clip")]
+    [HarmonyPostfix]
+    private static void Setter_Postfix(AudioSource __instance)
+    {
+        if (isSelf)
+        { isSelf = false; return; }
+        
+        if(__instance == null) return;
+        isSelf = true;
+        if (__instance.clip == null) return;
+        
+        isSelf = true;
+        var newClip = Plugin.GetSoundFromPacks(__instance.clip.name);
+        if (newClip != null)
+        {
+            isSelf = true;
+            __instance.clip = newClip;
+            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
+            {
+                isSelf = true;
+                __instance.Play();
+            }
+        }
+    }
+    
     [HarmonyPatch(methodName:"get_clip")]
     [HarmonyPostfix]
     private static void Getter_Postfix(AudioSource __instance, ref AudioClip __result)
@@ -148,12 +178,18 @@ public static class AudioSourcePatches
         {
             isSelf = true;
             __instance.clip = newClip;
+            __result = newClip;
+            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
+            {
+                isSelf = true;
+                __instance.Play();
+            }
         }
     }
 
-    [HarmonyPatch(methodName:"set_clip")]
+    [HarmonyPatch(methodName:"Play", argumentTypes: [typeof(double)])]
     [HarmonyPostfix]
-    private static void Setter_Prefix(AudioSource __instance, ref AudioClip value)
+    private static void Play_Prefix(AudioSource __instance, double delay)
     {
         if (isSelf)
         { isSelf = false; return; }
@@ -168,6 +204,31 @@ public static class AudioSourcePatches
         {
             isSelf = true;
             __instance.clip = newClip;
+            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
+            {
+                isSelf = true;
+                __instance.Play();
+            }
+        }
+    }
+    
+    [HarmonyPatch(methodName:"PlayHelper", argumentTypes: [typeof(AudioSource), typeof(ulong)])]
+    [HarmonyPostfix]
+    private static void PlayHelper_Prefix(AudioSource source, ulong delay)
+    {
+        if (isSelf)
+        { isSelf = false; return; }
+        
+        if(source == null) return;
+        isSelf = true;
+        if(source.clip == null) return;
+        
+        isSelf = true;
+        var newClip = Plugin.GetSoundFromPacks(source.clip.name);
+        if (newClip != null)
+        {
+            isSelf = true;
+            source.clip = newClip;
         }
     }
 }
