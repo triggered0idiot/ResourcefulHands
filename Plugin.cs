@@ -1,12 +1,16 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using BepInEx;
 using HarmonyLib;
 using Newtonsoft.Json;
 using ResourcefulHands.Patches;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -40,7 +44,24 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
     public const string PackPrefsName = "__ResourcefulHands_Mod_PackOrder";
     public const string DisabledPacksPrefsName = "__ResourcefulHands_Mod_DisabledPacks";
     public const string ModifiedStr = " [modified asset]";
-    
+
+    private static AssetBundle? _assets;
+    public static AssetBundle? Assets
+    {
+        get
+        {
+            if (_assets == null)
+            {
+                Assembly assembly = Assembly.GetExecutingAssembly();
+                string resourceName = $"ResourcefulHands.rh_assets.bundle";
+                using Stream? stream = assembly.GetManifestResourceStream(resourceName);
+                if(stream != null)
+                    _assets = AssetBundle.LoadFromStream(stream);
+            }
+            return _assets;
+        }
+        private set => _assets = value;
+    }
     public static Plugin Instance { get; private set; } = null!;
     public static string ConfigFolder => Path.Combine(Paths.ConfigPath, "RHPacks");
     public static List<TexturePack> LoadedPacks { get; internal set; } = [];
@@ -135,7 +156,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             if(previousPacksState == null) return;
             
             TexturePack[] previousPacks = LoadedPacks.ToArray();
-            TexturePack?[] newPacks = new TexturePack[previousPacks.Length];
+            TexturePack?[] newPacks = new TexturePack[previousPacksState.Length];
             for (int i = 0; i < newPacks.Length; i++)
                 newPacks[i] = null;
             
@@ -168,6 +189,34 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             SaveDisabledPacks();
         }
         LoadedPacks.Clear();
+        log("Expanding zips...");
+        string[] zipPaths = Directory.GetFiles(ConfigFolder, "*.zip", SearchOption.TopDirectoryOnly);
+        foreach (string zipPath in zipPaths)
+        {
+            try
+            {
+                log($"Expanding texture pack zip: {zipPath}");
+                bool isTopLevelZip = true;
+                using (ZipArchive zip = ZipFile.OpenRead(zipPath))
+                    isTopLevelZip = zip.GetEntry("info.json") != null;
+
+                if (isTopLevelZip)
+                {
+                    var zipTargDir = Directory.CreateDirectory(Path.Combine(ConfigFolder, Path.GetFileNameWithoutExtension(zipPath)));
+                    ZipFile.ExtractToDirectory(zipPath, zipTargDir.FullName);
+                }
+                else
+                    ZipFile.ExtractToDirectory(zipPath, ConfigFolder);
+                
+                File.Delete(zipPath);
+                log($"Expanded!");
+            }
+            catch (Exception e)
+            {
+                log($"Failed to expand!");
+                Instance.Logger.LogError(e);
+            }
+        }
         log("Loading texture packs...");
         string[] paths = Directory.GetDirectories(ConfigFolder, "*", SearchOption.TopDirectoryOnly);
         foreach (string path in paths)
@@ -196,32 +245,6 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
 
         log($"Loaded {LoadedPacks.Count}/{paths.Length} texture packs");
 
-        // reload the old textures
-        /* TODO: finish implementation 
-        List<Material> allMaterials = Resources.FindObjectsOfTypeAll<Material>().ToList();
-        foreach (var renderer in FindObjectsOfType<Renderer>(includeInactive: true))
-            allMaterials.AddRange(renderer.sharedMaterials.Where(mat => !allMaterials.Contains(mat)));
-        
-        int mainTexID = Shader.PropertyToID("_MainTex");
-        foreach (var material in allMaterials)
-        {
-            if(material == null) continue;
-            if(!material.HasProperty(mainTexID)) continue;
-
-            try
-            {
-                Texture mainTexture = MaterialPatches.GetMainTexture(material);
-                if (mainTexture == null) continue;
-                if (!MaterialPatches.previousTextures.TryGetValue(mainTexture.name, out var ogTexture)) continue;
-            
-                MaterialPatches.SetMainTexture(material, ogTexture);
-#if DEBUG
-                Debug.Log($"Fixed {mainTexture.name}[{mainTexture}] back to {ogTexture.name}[{ogTexture}]");
-#endif
-            }catch{}
-        }
-        */
-        
         // attempt to refresh previously files
         RefreshTextures();
         RefreshSounds();
@@ -253,6 +276,74 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         foreach (var audioSource in Object.FindObjectsOfType<AudioSource>(true))
         { audioSource.clip = audioSource.clip; }
     }
+
+    IEnumerator LoadCustomSettings(UI_SettingsMenu settingsMenu)
+    {
+        yield return new WaitForSecondsRealtime(1.0f);
+        
+        Debug.Log("Loading custom settings menu...");
+        try
+        {
+            UI_TabGroup tabGroup = settingsMenu.GetComponentInChildren<UI_TabGroup>();
+            if (tabGroup)
+            {
+                GameObject button = Object.Instantiate(Assets.LoadAsset<GameObject>("Packs"),
+                    tabGroup.transform, false);
+                Button buttonButton = button.GetComponentInChildren<Button>();
+                TextMeshProUGUI buttonTmp = button.GetComponentInChildren<TextMeshProUGUI>();
+
+                GameObject menu = Object.Instantiate(Assets.LoadAsset<GameObject>("Pack Settings"),
+                    tabGroup.transform.parent, false);
+                menu.AddComponent<UI_RHPacksList>();
+                menu.SetActive(false);
+
+                for (int i = 0; i < tabGroup.transform.childCount; i++)
+                {
+                    Transform child = tabGroup.transform.GetChild(i);
+                    string cName = child.name.ToLower();
+                    if (cName.StartsWith("lb") || cName.StartsWith("rb"))
+                        child.gameObject.SetActive(false);
+                }
+
+                var prevTab = tabGroup.tabs.FirstOrDefault();
+                if (prevTab != null)
+                {
+                    buttonTmp.font = prevTab.button.GetComponentInChildren<TextMeshProUGUI>().font;
+                    for (int i = 0; i < prevTab.tabObject.transform.childCount; i++)
+                    {
+                        Transform child = prevTab.tabObject.transform.GetChild(i);
+                        if (child.name.ToLower().Contains("title"))
+                        {
+                            TextMeshProUGUI title = child.GetComponentInChildren<TextMeshProUGUI>();
+                            if (title)
+                            {
+                                GameObject copiedTitle = Object.Instantiate(child.gameObject, menu.transform, true);
+                                var tmp = copiedTitle.GetComponentInChildren<TextMeshProUGUI>();
+                                tmp.text = "PACKS";
+                                
+                                TextMeshProUGUI[] texts = menu.GetComponentsInChildren<TextMeshProUGUI>(includeInactive: true);
+                                foreach (var text in texts)
+                                    text.font = tmp.font;
+                            }
+                        }
+                    }
+                }
+
+                var tab = new UI_TabGroup.Tab
+                {
+                    button = buttonButton,
+                    name = "packs",
+                    tabObject = menu
+                };
+                buttonButton.onClick.AddListener(() => { tabGroup.SelectTab("packs"); });
+                tabGroup.tabs.Add(tab);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to load custom settings menu:\n"+e.ToString());
+        }
+    }
     
     public void Awake()
     {
@@ -264,9 +355,9 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         Harmony = new Harmony(GUID);
         Harmony.PatchAll();
 
-        SceneManager.sceneLoaded += (arg0, mode) =>
+        SceneManager.sceneLoaded += (scene, mode) =>
         {
-            if (SteamManager.connected || arg0.name.ToLower().Contains("main-menu"))
+            if (SteamManager.connected || scene.name.ToLower().Contains("main-menu"))
             {
                 LoadedPacks.Clear();
                 ReloadPacks_Internal(Debug.Log);
@@ -289,11 +380,29 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 ccInst.RegisterCommand(EnableCommand, EnablePack, false);
                 ccInst.RegisterCommand(DisableCommand, DisablePack, false);
             }
+
+            var settingsMenu = Object.FindObjectsOfType<UI_SettingsMenu>(true).FirstOrDefault(m => m.gameObject.scene == scene);
+            if (settingsMenu && Assets != null) // right now i don't think there is a "standard" way to inject a custom menu into settings, so this will prolly break if another mod does this too
+            {
+                StartCoroutine(LoadCustomSettings(settingsMenu));
+            }
+            
             RefreshTextures();
             RefreshSounds();
         };
     }
 
+    internal static void MovePack(TexturePack pack, bool isUp)
+    {
+        int packIndex = LoadedPacks.FindIndex(p => p == pack);
+        
+        int nextPackIndex = 0;
+        nextPackIndex = isUp ? Math.Clamp(packIndex - 1, 0, LoadedPacks.Count - 1) : Math.Clamp(packIndex + 1, 0, LoadedPacks.Count - 1);
+        
+        TexturePack previousPack = LoadedPacks[nextPackIndex];
+        LoadedPacks[nextPackIndex] = pack;
+        LoadedPacks[packIndex] = previousPack;
+    }
     private static void MovePacks(string[] args)
     {
         const string helpText = $"Usage: {MoveCommand} [pack guid/pack index] [up/down]\nResource packs at the bottom of the loaded list will override textures at the top, use this command to move a texture pack up or down the list.";
@@ -330,8 +439,6 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             }
         }
         
-        int packIndex = LoadedPacks.FindIndex(p => p == pack);
-        
         string dir = args[1].ToLower();
         if (dir is not ("up" or "down" or "u" or "d"))
         {
@@ -341,12 +448,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         }
         
         bool isUp = dir is "up" or "u";
-        int nextPackIndex = 0;
-        nextPackIndex = isUp ? Math.Clamp(packIndex - 1, 0, LoadedPacks.Count - 1) : Math.Clamp(packIndex + 1, 0, LoadedPacks.Count - 1);
-        
-        TexturePack previousPack = LoadedPacks[nextPackIndex];
-        LoadedPacks[nextPackIndex] = pack;
-        LoadedPacks[packIndex] = previousPack;
+        MovePack(pack, isUp);
         
         CommandConsole.Log("Reloading packs...");
         ReloadPacks_Internal(Debug.Log);
@@ -685,3 +787,4 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         CommandConsole.Log($"Packed all assets to '{path}'", true);
     }
 }
+// amongus

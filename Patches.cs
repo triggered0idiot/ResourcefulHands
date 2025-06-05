@@ -3,8 +3,23 @@ using System.Linq;
 using HarmonyLib;
 using Sirenix.Utilities;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace ResourcefulHands.Patches;
+
+// thanks McArdellje
+[HarmonyPatch(typeof(Image))]
+public static class ImagePatches
+{
+    // unbelievably simple!
+    [HarmonyPatch("activeSprite", MethodType.Getter)]
+    [HarmonyPostfix]
+    public static void Getter_sprite_Postfix(Image __instance, ref Sprite __result) {
+        if (__result == null)
+            return;
+        __result = SpriteRendererPatches.GetSprite(__result);
+    }
+}
 
 [HarmonyPatch(typeof(SpriteRenderer))]
 public static class SpriteRendererPatches
@@ -12,7 +27,7 @@ public static class SpriteRendererPatches
     private static bool isSelf = false;
     internal static Dictionary<string, Sprite> _customSpriteCache { get; private set; } = new();
 
-    private static Sprite GetSprite(Sprite sprite)
+    public static Sprite GetSprite(Sprite sprite)
     {
         if (_customSpriteCache.TryGetValue(sprite.name, out var spriteCache))
         {

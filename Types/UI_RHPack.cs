@@ -1,0 +1,97 @@
+﻿using Steamworks;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace ResourcefulHands;
+
+public class UI_RHPack : MonoBehaviour
+{
+    public RawImage? Icon; //  IconContainer/Icon/
+    
+    public TextMeshProUGUI? Title; //  Title/
+    public TextMeshProUGUI? Author; //  AuthorPanel/Author/
+    public Button? SteamAuthor; //  AuthorPanel/ViewOnSteam/
+    public TextMeshProUGUI? Description; //  Desc/
+    public TextMeshProUGUI? Guid; //  Guid/
+
+    public Button? Up; //  Up/Arrow/
+    public Button? Down; //  Down/Arrow/
+    public Toggle? EnableToggle; //  Disable/Toggle/
+
+    private TexturePack _pack;
+    
+    private T? FindAt<T>(string path) where T : Component
+    {
+        Transform t = this.transform;
+        string[] objectNames = path.Split('/');
+        for (int i = 0; i < objectNames.Length; i++)
+        {
+            string objectName = objectNames[i];
+            t = t.Find(objectName);
+            if (t == null)
+                return null;
+        }
+
+        return t.GetComponentInChildren<T>();
+    }
+    
+    public void Awake()
+    {
+        Icon = FindAt<RawImage>("IconContainer/Icon");
+        
+        Title = FindAt<TextMeshProUGUI>("Title");
+        Author = FindAt<TextMeshProUGUI>("AuthorPanel/Author");
+        SteamAuthor = FindAt<Button>("AuthorPanel/ViewOnSteam");
+        Description = FindAt<TextMeshProUGUI>("Desc");
+        Guid = FindAt<TextMeshProUGUI>("Guid");
+        
+        Up = FindAt<Button>("Up/Arrow");
+        Down = FindAt<Button>("Down/Arrow");
+        EnableToggle = FindAt<Toggle>("Disable/Toggle");
+    }
+
+    // Loads the pack's values into the ui, this should only be called once.
+    public void Load(TexturePack pack, bool enabled = true)
+    {
+        _pack = pack;
+
+        Icon!.texture = _pack.Icon;
+        
+        Title!.text = _pack.name;
+        Author!.text = _pack.author;
+        Description!.text = _pack.desc;
+        Guid!.text = _pack.guid;
+
+        EnableToggle!.isOn = enabled;
+
+        if (pack.steamid > 0)
+        {
+            SteamAuthor.onClick.AddListener(() =>
+            {
+                SteamFriends.OpenUserOverlay(pack.steamid, "steamid");
+            });
+        }
+        else
+        {
+            SteamAuthor.gameObject.SetActive(false);
+        }
+        
+        Up!.onClick.AddListener(() =>
+        {
+            Plugin.MovePack(_pack, true);
+            UI_RHPacksList.Instance.BuildList();
+        });
+        Down!.onClick.AddListener(() =>
+        {
+            Plugin.MovePack(_pack, false);
+            UI_RHPacksList.Instance.BuildList();
+        });
+        EnableToggle!.onValueChanged.AddListener((newVal) =>
+        {
+            _pack.IsActive = newVal;
+            Plugin.ReloadPacks_Internal(Debug.Log);
+            UI_RHPacksList.Instance.BuildList();
+        });
+    }
+}

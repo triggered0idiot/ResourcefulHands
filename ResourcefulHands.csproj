@@ -12,6 +12,8 @@
 
     <ItemGroup>
       <EmbeddedResource Remove="Libs\**" />
+      <EmbeddedResource Include="rh_assets.bundle" />
+      <None Remove="rh_assets.bundle" />
     </ItemGroup>
 
     <ItemGroup>
