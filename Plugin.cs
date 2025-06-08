@@ -66,6 +66,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
     public static string ConfigFolder => Path.Combine(Paths.ConfigPath, "RHPacks");
     public static List<TexturePack> LoadedPacks { get; internal set; } = [];
     public static TexturePack[] ActivePacks => LoadedPacks.Where(pack => pack.IsActive).ToArray();
+    public static bool HasPacksChanged = true;
     
     public static bool IsDemo
     {
@@ -262,9 +263,13 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         foreach (var material in allMaterials)
             if(material != null && material.HasTexture(mainTex))
                 material.mainTexture = material.mainTexture;
-        
+
         foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
-        { spriteR.sprite = spriteR.sprite; }
+        {
+            spriteR.sprite = spriteR.sprite;
+            if(!SpriteRendererPatches._spriteRendererCache.Contains(spriteR))
+                SpriteRendererPatches._spriteRendererCache.Add(spriteR);
+        }
     }
     internal static void RefreshSounds()
     {
@@ -355,9 +360,12 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         Harmony = new Harmony(GUID);
         Harmony.PatchAll();
 
+        bool hasLoadedIntro = false;
         SceneManager.sceneLoaded += (scene, mode) =>
         {
-            if (SteamManager.connected || scene.name.ToLower().Contains("main-menu"))
+            if(scene.name.ToLower().Contains("main-menu")) hasLoadedIntro = true;
+            
+            if (HasPacksChanged && hasLoadedIntro)
             {
                 LoadedPacks.Clear();
                 ReloadPacks_Internal(Debug.Log);
@@ -387,9 +395,18 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 StartCoroutine(LoadCustomSettings(settingsMenu));
             }
             
+            SpriteRendererPatches._spriteRendererCache.Clear();
             RefreshTextures();
             RefreshSounds();
         };
+    }
+
+    public void LateUpdate()
+    {
+        foreach (var sr in SpriteRendererPatches._spriteRendererCache)
+        {
+            sr.sprite = sr.sprite;
+        }
     }
 
     internal static void MovePack(TexturePack pack, bool isUp)

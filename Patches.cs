@@ -26,6 +26,7 @@ public static class SpriteRendererPatches
 {
     private static bool isSelf = false;
     internal static Dictionary<string, Sprite> _customSpriteCache { get; private set; } = new();
+    internal static List<SpriteRenderer> _spriteRendererCache { get; private set; } = new();
 
     public static Sprite GetSprite(Sprite sprite)
     {
@@ -68,6 +69,7 @@ public static class SpriteRendererPatches
 #if DEBUG
         Debug.Log($"{__instance?.sprite?.texture.name} was accessed [ctor]");
 #endif
+        _spriteRendererCache.Add(__instance);
         
         if(__instance == null) return;
         isSelf = true;
