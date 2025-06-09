@@ -42,11 +42,11 @@ public class UI_RHPacksList : MonoBehaviour
     public void BuildList()
     {
         ClearList();
-        foreach (var pack in Plugin.LoadedPacks)
+        foreach (var pack in ResourcePacksManager.LoadedPacks)
         {
             var newPackUI = Instantiate(packTemplate, container);
             var pack1 = pack;
-            newPackUI.Load(pack, Plugin.ActivePacks.FirstOrDefault(p => p == pack1) != null);
+            newPackUI.Load(pack, ResourcePacksManager.ActivePacks.FirstOrDefault(p => p == pack1) != null);
             newPackUI.gameObject.name = pack.guid;
             newPackUI.gameObject.SetActive(true);
         }

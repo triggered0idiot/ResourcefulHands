@@ -51,6 +51,22 @@ public class TexturePack
     [JsonIgnore]
     public Texture2D Icon { get; private set; }
     
+    [JsonIgnore]
+    [System.NonSerialized]
+    public const string DefaultJson =
+    """
+    {
+        "name":"generated-game-assets",
+        "desc":"Every game asset",
+        "author":"Dark Machine Games",
+        "guid":"generated-game-assets",
+        "steamid":0,
+        "hidden-from-list":true,
+        "only-in-full-game":false,
+        "format-version":1
+    }                                                           
+    """;
+    
     // considering cloning these values, TODO: test if the textures and sounds are safe to be shared
     public Texture2D? GetTexture(string textureName)
     {
@@ -76,7 +92,7 @@ public class TexturePack
         if (pack == null)
         {
             Debug.LogWarning($"{jsonPath} isn't a valid TexturePack json!");
-            Debug.Log("Example: " + Plugin.DefaultJson);
+            Debug.Log("Example: " + DefaultJson);
             return null;
         }
         if (!force)
@@ -181,12 +197,22 @@ public class TexturePack
                 Debug.LogWarning($"{extension} isn't supported! Only mp3, wav, aiff, wma, acc files are supported! [at: {soundFile}]");
                 continue;
             }
+            
             AudioClip clip = MiscUtils.LoadAudioClipFromFile(soundFile);
+            
             clip.name = Path.GetFileNameWithoutExtension(soundFile);
             if (!pack.Sounds.TryAdd(clip.name, clip))
                 Debug.LogError($"Failed to add {soundFile} because texture of that name already exists in the same pack!");
         }
 
+        /*var clips = MiscUtils.LoadAudioClipsAsync(soundFiles);
+        clips.Wait();
+        foreach (var clip in clips.Result)
+        {
+            if (!pack.Sounds.TryAdd(clip.name, clip))
+                Debug.LogError($"Failed to add {clip.name} because that clip already exists in the same pack!");
+        }*/
+        
         return pack;
     }
 }

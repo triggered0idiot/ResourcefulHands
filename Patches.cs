@@ -24,26 +24,33 @@ public static class ImagePatches
 [HarmonyPatch(typeof(SpriteRenderer))]
 public static class SpriteRendererPatches
 {
-    private static bool isSelf = false;
+    private static bool dontPatch = false; // prevents loopbacks
     internal static Dictionary<string, Sprite> _customSpriteCache { get; private set; } = new();
-    internal static List<SpriteRenderer> _spriteRendererCache { get; private set; } = new();
 
     public static Sprite GetSprite(Sprite sprite)
     {
-        if (_customSpriteCache.TryGetValue(sprite.name, out var spriteCache))
+        if (sprite == null)
+            return sprite;
+
+        bool isModifiedSprite = sprite.name.EndsWith(Plugin.ModifiedStr);
+        string spriteCacheName = sprite.name;
+        if(isModifiedSprite)
+            spriteCacheName = spriteCacheName.Substring(0, spriteCacheName.Length - Plugin.ModifiedStr.Length);
+        
+        if (_customSpriteCache.TryGetValue(spriteCacheName, out var spriteCache))
         {
             if(spriteCache != null)
                 return spriteCache;
             else
             {
                 #if DEBUG
-                Debug.Log($"{sprite.name} is null now for some reason [cached]");
+                Debug.Log($"{spriteCacheName} is null now for some reason [cached]");
                 #endif
-                _customSpriteCache.Remove(sprite.name);
+                _customSpriteCache.Remove(spriteCacheName);
             }
         }
         
-        var texture = Plugin.GetTextureFromPacks(sprite.texture.name);
+        var texture = ResourcePacksManager.GetTextureFromPacks(sprite.texture.name);
         if(texture == null) return sprite;
 
         // clamp rect incase someone fucks the texture size
@@ -53,126 +60,99 @@ public static class SpriteRendererPatches
         float clampedHeight = Mathf.Clamp(sprite.rect.height, 0, texture.height - clampedY);
         
         var localSprite = Sprite.Create(texture, new Rect(clampedX, clampedY, clampedWidth, clampedHeight), new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height), sprite.pixelsPerUnit);
-        localSprite.name = sprite.name + Plugin.ModifiedStr;
-        Debug.Log($"cached {sprite.name} as {localSprite}");
-        _customSpriteCache.Add(sprite.name, localSprite);
+        localSprite.name = spriteCacheName + Plugin.ModifiedStr;
+#if DEBUG
+        Debug.Log($"cached {spriteCacheName} as {localSprite}");
+        if(isModifiedSprite)
+            Debug.LogWarning("cached a modified sprite? idk some fucky stuff is going on");
+#endif
+        
+        _customSpriteCache.Add(spriteCacheName, localSprite);
         return localSprite; 
     }
     
     [HarmonyPatch(MethodType.Constructor)]
     [HarmonyPostfix]
-    private static void Constructor_Postfix(SpriteRenderer __instance)
+    private static void Constructor_Postfix(SpriteRenderer __instance) // i dont think this gets called
     {
-        if (isSelf)
-        { isSelf = false; return; }
+        __instance.sprite = __instance.sprite;
         
 #if DEBUG
         Debug.Log($"{__instance?.sprite?.texture.name} was accessed [ctor]");
 #endif
-        _spriteRendererCache.Add(__instance);
-        
-        if(__instance == null) return;
-        isSelf = true;
-        var sprite = __instance.sprite;
-        
-        if(sprite == null || sprite.texture == null) return;
-        sprite = GetSprite(sprite);
-        
-        isSelf = true;
-        __instance.sprite = sprite;
     }
 
-    [HarmonyPatch(methodName:"get_sprite")]
+    [HarmonyPatch("sprite", MethodType.Getter)]
     [HarmonyPostfix]
     private static void Getter_Postfix(SpriteRenderer __instance, ref Sprite __result)
     {
-        if (isSelf)
-        { isSelf = false; return; }
+        if (dontPatch)
+        { dontPatch = false; return; }
         
-        if(__instance == null) return;
-        isSelf = true;
-        var sprite = __instance.sprite;
-        
-        if(sprite == null || sprite.texture == null) return;
-        sprite = GetSprite(sprite);
-        
-        isSelf = true;
-        __instance.sprite = sprite;
+        __result = GetSprite(__result);
+        dontPatch = true;
+        __instance.sprite = __result;
     }
 
-    [HarmonyPatch(methodName:"set_sprite")]
+    [HarmonyPatch("sprite", MethodType.Setter)]
     [HarmonyPostfix]
     private static void Setter_Prefix(SpriteRenderer __instance, ref Sprite value)
     {
-        if (isSelf)
-        { isSelf = false; return; }
+        if (dontPatch)
+        { dontPatch = false; return; }
         
-        if(__instance == null) return;
-        isSelf = true;
-        var sprite = __instance.sprite;
-        
-        if(sprite == null || sprite.texture == null) return;
-        sprite = GetSprite(sprite);
-        
-        isSelf = true;
-        __instance.sprite = sprite;
+        value = GetSprite(value);
+        dontPatch = true;
+        __instance.sprite = value;
     }
 }
 
 [HarmonyPatch(typeof(AudioSource))]
 public static class AudioSourcePatches
 {
-    private static bool isSelf = false;
-    
     [HarmonyPatch(MethodType.Constructor)]
     [HarmonyPostfix]
-    private static void Constructor_Postfix(AudioSource __instance)
+    private static void Constructor_Postfix(AudioSource __instance) // i dont think this gets called
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
 #if DEBUG
         Debug.Log($"{__instance?.clip.name} was accessed [ctor]");
 #endif
         
         if(__instance == null) return;
-        isSelf = true;
         if(__instance.clip == null) return;
         
-        isSelf = true;
-        var newClip = Plugin.GetSoundFromPacks(__instance.clip.name);
+        var newClip = ResourcePacksManager.GetSoundFromPacks(__instance.clip.name);
         if (newClip != null)
         {
-            isSelf = true;
             __instance.clip = newClip;
             if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
             {
-                isSelf = true;
+                dontPatch = true;
                 __instance.Play();
             }
         }
     }
 
+    private static bool dontPatch = false; // prevents loopbacks
+    
     [HarmonyPatch(methodName:"set_clip")]
     [HarmonyPostfix]
-    private static void Setter_Postfix(AudioSource __instance)
+    private static void Setter_Postfix(AudioSource __instance, ref AudioClip value)
     {
-        if (isSelf)
-        { isSelf = false; return; }
+        if(dontPatch)
+        { dontPatch = false; return; }
         
-        if(__instance == null) return;
-        isSelf = true;
-        if (__instance.clip == null) return;
+        if (value == null) return;
         
-        isSelf = true;
-        var newClip = Plugin.GetSoundFromPacks(__instance.clip.name);
+        var newClip = ResourcePacksManager.GetSoundFromPacks(value.name);
         if (newClip != null)
         {
-            isSelf = true;
+            dontPatch = true;
             __instance.clip = newClip;
+            value = newClip;
             if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
             {
-                isSelf = true;
+                dontPatch = true;
                 __instance.Play();
             }
         }
@@ -182,23 +162,20 @@ public static class AudioSourcePatches
     [HarmonyPostfix]
     private static void Getter_Postfix(AudioSource __instance, ref AudioClip __result)
     {
-        if (isSelf)
-        { isSelf = false; return; }
+        if(dontPatch)
+        { dontPatch = false; return; }
+
+        if (__result == null) return;
         
-        if(__instance == null) return;
-        isSelf = true;
-        if (__instance.clip == null) return;
-        
-        isSelf = true;
-        var newClip = Plugin.GetSoundFromPacks(__instance.clip.name);
+        var newClip = ResourcePacksManager.GetSoundFromPacks(__result.name);
         if (newClip != null)
         {
-            isSelf = true;
+            dontPatch = true;
             __instance.clip = newClip;
             __result = newClip;
             if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
             {
-                isSelf = true;
+                dontPatch = true;
                 __instance.Play();
             }
         }
@@ -208,52 +185,31 @@ public static class AudioSourcePatches
     [HarmonyPostfix]
     private static void Play_Prefix(AudioSource __instance, double delay)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
-        if(__instance == null) return;
-        isSelf = true;
+        if(dontPatch)
+        { dontPatch = false; return; }
+
         if(__instance.clip == null) return;
         
-        isSelf = true;
-        var newClip = Plugin.GetSoundFromPacks(__instance.clip.name);
-        if (newClip != null)
-        {
-            isSelf = true;
-            __instance.clip = newClip;
-            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
-            {
-                isSelf = true;
-                __instance.Play();
-            }
-        }
+        __instance.clip = __instance.clip;
     }
     
     [HarmonyPatch(methodName:"PlayHelper", argumentTypes: [typeof(AudioSource), typeof(ulong)])]
     [HarmonyPostfix]
     private static void PlayHelper_Prefix(AudioSource source, ulong delay)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
-        if(source == null) return;
-        isSelf = true;
+        if(dontPatch)
+        { dontPatch = false; return; }
+
         if(source.clip == null) return;
         
-        isSelf = true;
-        var newClip = Plugin.GetSoundFromPacks(source.clip.name);
-        if (newClip != null)
-        {
-            isSelf = true;
-            source.clip = newClip;
-        }
+        source.clip = source.clip;
     }
 }
 
 [HarmonyPatch(typeof(Material))]
 public static class MaterialPatches
 {
-    private static bool isSelf = false;
+    private static bool dontPatch = false; // prevents loopbacks
     internal static Dictionary<string, Texture> previousTextures = new();
     private static readonly int MainTex = Shader.PropertyToID("_MainTex");
 
@@ -261,12 +217,12 @@ public static class MaterialPatches
 
     public static void SetMainTexture(Material m, Texture texture)
     {
-        isSelf = true;
+        dontPatch = true;
         m.mainTexture = texture;
     }
     public static Texture GetMainTexture(Material m)
     {
-        isSelf = true;
+        dontPatch = true;
         return m.mainTexture;
     }
     
@@ -274,17 +230,17 @@ public static class MaterialPatches
     [HarmonyPostfix]
     private static void Getter_Postfix(Material __instance, ref Texture __result)
     {
-        if (isSelf)
-        { isSelf = false; return; }
+        if (dontPatch)
+        { dontPatch = false; return; }
         
         if(__instance == null) return;
         if(!__instance.HasTexture(MainTex)) return;
         
-        isSelf = true;
+        dontPatch = true;
         var mainTex = __instance.mainTexture;
         if(mainTex == null) return;
         
-        var texture = Plugin.GetTextureFromPacks(mainTex.name);
+        var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
         if(texture == null) return;
         texture = Object.Instantiate(texture);
         texture.name = mainTex.name + " [replaced]"; // change name to help with restoration?
@@ -297,17 +253,17 @@ public static class MaterialPatches
     [HarmonyPostfix]
     private static void Setter_Prefix(Material __instance, ref Texture value)
     {
-        if (isSelf)
-        { isSelf = false; return; }
+        if (dontPatch)
+        { dontPatch = false; return; }
         
         if(__instance == null) return;
         if(!__instance.HasTexture(MainTex)) return;
         
-        isSelf = true;
+        dontPatch = true;
         var mainTex = __instance.mainTexture;
         if(mainTex == null) return;
         
-        var texture = Plugin.GetTextureFromPacks(mainTex.name);
+        var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
         if(texture == null) return;
         texture = Object.Instantiate(texture);
         texture.name = mainTex.name + " [replaced]"; // change name to help with restoration?
@@ -320,16 +276,12 @@ public static class MaterialPatches
 [HarmonyPatch(typeof(Renderer))]
 public static class RendererPatches
 {
-    private static bool isSelf = false;
     private static readonly int MainTex = Shader.PropertyToID("_MainTex");
 
     [HarmonyPatch(MethodType.Constructor)]
     [HarmonyPostfix]
     private static void Constructor_Postfix(Renderer __instance)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
 #if DEBUG
         Debug.Log($"{__instance?.name} (Renderer) was accessed [ctor]");
 #endif
@@ -355,27 +307,18 @@ public static class RendererPatches
     [HarmonyPostfix]
     private static void Getter_material_Postfix(Renderer __instance, ref Material __result)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-
         Patch(ref __result);
     }
     [HarmonyPatch(methodName:"set_material")]
     [HarmonyPostfix]
     private static void Setter_material_Prefix(Renderer __instance, ref Material value)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
         Patch(ref value);
     }
     [HarmonyPatch(methodName:"get_materials")]
     [HarmonyPostfix]
     private static void Getter_materials_Postfix(Renderer __instance, ref Material[] __result)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-
         for (int i = 0; i < __result.Length; i++)
         { Patch(ref __result[i]); }
     }
@@ -383,9 +326,6 @@ public static class RendererPatches
     [HarmonyPostfix]
     private static void Setter_materials_Prefix(Renderer __instance, ref Material[] value)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
         for (int i = 0; i < value.Length; i++)
         { Patch(ref value[i]); }
     }
@@ -394,27 +334,18 @@ public static class RendererPatches
     [HarmonyPostfix]
     private static void Getter_sharedMaterial_Postfix(Renderer __instance, ref Material __result)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
         Patch(ref __result);
     }
     [HarmonyPatch(methodName:"set_sharedMaterial")]
     [HarmonyPostfix]
     private static void Setter_sharedMaterial_Prefix(Renderer __instance, ref Material value)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
         Patch(ref value);
     }
     [HarmonyPatch(methodName:"get_sharedMaterials")]
     [HarmonyPostfix]
     private static void Getter_sharedMaterials_Postfix(Renderer __instance, ref Material[] __result)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
         for (int i = 0; i < __result.Length; i++)
         { Patch(ref __result[i]); }
     }
@@ -422,9 +353,6 @@ public static class RendererPatches
     [HarmonyPostfix]
     private static void Setter_sharedMaterials_Prefix(Renderer __instance, ref Material[] value)
     {
-        if (isSelf)
-        { isSelf = false; return; }
-        
         for (int i = 0; i < value.Length; i++)
         { Patch(ref value[i]); }
     }
