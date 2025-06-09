@@ -24,7 +24,7 @@ public class TexturePack
     public string desc = string.Empty;
     public string author = string.Empty;
     [JsonProperty(NullValueHandling=NullValueHandling.Ignore)]
-    public ulong steamid = 0; //TODO: implement this in a ui?
+    public ulong steamid = 0;
     [JsonProperty(NullValueHandling=NullValueHandling.Include)]
     public string guid = string.Empty;
     
