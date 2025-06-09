@@ -205,6 +205,7 @@ public class TexturePack
                 Debug.LogError($"Failed to add {soundFile} because texture of that name already exists in the same pack!");
         }
 
+        // TODO: multithread sound loading so it loads sounds faster
         /*var clips = MiscUtils.LoadAudioClipsAsync(soundFiles);
         clips.Wait();
         foreach (var clip in clips.Result)

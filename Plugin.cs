@@ -19,7 +19,7 @@ using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
 
-[BepInPlugin(GUID, "Resourceful Hands", "0.9.0")] // Resourceful Hands
+[BepInPlugin(GUID, "Resourceful Hands", "0.9.5")] // Resourceful Hands
 public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of logging instead of mixing Debug.Log and CommandConsole.Log
 {
     public const string GUID = "triggeredidiot.wkd.resourcefulhands";
@@ -92,11 +92,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 try
                 { material.SetTexture(corruptTextureID, corruptTexture); }
                 catch (Exception e)
-                {
-#if DEBUG
-                    Debug.LogError(e);
-#endif
-                }
+                { Debug.LogError(e); }
             }
         }
 
@@ -222,7 +218,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
 
     public void LateUpdate()
     {
-        foreach (var sr in FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None)) // forgive me for my sins
+        foreach (var sr in FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None)) // TODO: forgive me for my sins
             sr.sprite = sr.sprite;
     }
 }
