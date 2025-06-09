@@ -85,37 +85,37 @@ public class TexturePack
         string jsonPath = Path.Combine(path, "info.json");
         if(!File.Exists(jsonPath))
         {
-            Debug.LogWarning($"{path} doesn't have an info.json!");
+            RHLog.Warning($"{path} doesn't have an info.json!");
             return null;
         }
         TexturePack? pack = JsonConvert.DeserializeObject<TexturePack>(File.ReadAllText(jsonPath));
         if (pack == null)
         {
-            Debug.LogWarning($"{jsonPath} isn't a valid TexturePack json!");
-            Debug.Log("Example: " + DefaultJson);
+            RHLog.Warning($"{jsonPath} isn't a valid TexturePack json!");
+            RHLog.Info("Example: " + DefaultJson);
             return null;
         }
         if (!force)
         {
             if (pack.hiddenFromList)
             {
-                Debug.Log($"Not loading texture pack at {path} because it is hidden.");
+                RHLog.Info($"Not loading texture pack at {path} because it is hidden.");
                 return null;
             }
             if (pack.onlyInFullGame && Plugin.IsDemo)
             {
-                Debug.Log($"Skipping incompatible texture pack (it says it only works for the fullgame): {path}");
+                RHLog.Info($"Skipping incompatible texture pack (it says it only works for the fullgame): {path}");
                 return null;
             }
         }
         
         if(pack.texturePackVersion != CurrentFormatVersion)
-            Debug.LogWarning($"Texture pack at {path} is format version {pack.texturePackVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
+            RHLog.Warning($"Texture pack at {path} is format version {pack.texturePackVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
         
         string iconPath = Path.Combine(path, "pack.png");
         if(!File.Exists(iconPath))
         {
-            Debug.LogWarning($"{path} doesn't have an pack.png!");
+            RHLog.Warning($"{path} doesn't have an pack.png!");
             pack.Icon = new Texture2D(2, 2);
         }
         else
@@ -124,7 +124,7 @@ public class TexturePack
             Texture2D texture = new Texture2D(2, 2);
             if (!texture.LoadImage(fileBytes, false))
             {
-                Debug.LogWarning($"{iconPath} isn't a valid texture!");
+                RHLog.Warning($"{iconPath} isn't a valid texture!");
                 try{Object.Destroy(texture);}catch{/**/}
             }
             else
@@ -145,10 +145,10 @@ public class TexturePack
         {
             string newJson = JsonConvert.SerializeObject(pack);
             File.WriteAllText(jsonPath, newJson);
-            Debug.LogWarning($"Corrected {pack.name}'s guid: {prevGuid} -> {pack.guid}");
+            RHLog.Warning($"Corrected {pack.name}'s guid: {prevGuid} -> {pack.guid}");
         }
             
-        Debug.Log($"Texture pack at {path} is valid, loading assets...");
+        RHLog.Info($"Texture pack at {path} is valid, loading assets...");
         string texturesFolder = Path.Combine(path, "Textures");
         string soundsFolder = Path.Combine(path, "Sounds");
         
@@ -165,18 +165,18 @@ public class TexturePack
         int i = 0;
         foreach (string textureFile in textureFiles)
         {
-            Debug.Log($"Loading textures ({i++}/{textureCount})");
+            RHLog.Info($"Loading textures ({i++}/{textureCount})");
             string extension = Path.GetExtension(textureFile).ToLower();
             if (!(extension.Contains("png") || extension.Contains("jpg")))
             {
-                Debug.LogWarning($"{extension} isn't supported! Only png and jpg files are supported! [at: {textureFile}]");
+                RHLog.Warning($"{extension} isn't supported! Only png and jpg files are supported! [at: {textureFile}]");
                 continue;
             }
             byte[] fileBytes = File.ReadAllBytes(textureFile);
             Texture2D texture = new Texture2D(2, 2);
             if (!texture.LoadImage(fileBytes, false))
             {
-                Debug.LogWarning($"{textureFile} isn't a valid texture!");
+                RHLog.Warning($"{textureFile} isn't a valid texture!");
                 try{Object.Destroy(texture);}catch{/**/}
                 continue;
             }
@@ -184,17 +184,17 @@ public class TexturePack
             texture.filterMode = FilterMode.Point; // something, something retro
             texture.Apply();
             if (!pack.Textures.TryAdd(texture.name, texture))
-                Debug.LogError($"Failed to add {textureFile} because texture of that name already exists in the same pack!");
+                RHLog.Error($"Failed to add {textureFile} because texture of that name already exists in the same pack!");
         }
 
         i = 0;
         foreach (var soundFile in soundFiles)
         {
-            Debug.Log($"Loading sounds ({i++}/{soundCount})");
+            RHLog.Info($"Loading sounds ({i++}/{soundCount})");
             string extension = Path.GetExtension(soundFile).ToLower();
             if (extension.Contains("ogg"))
             {
-                Debug.LogWarning($"{extension} isn't supported! Only mp3, wav, aiff, wma, acc files are supported! [at: {soundFile}]");
+                RHLog.Warning($"{extension} isn't supported! Only mp3, wav, aiff, wma, acc files are supported! [at: {soundFile}]");
                 continue;
             }
             
@@ -202,7 +202,7 @@ public class TexturePack
             
             clip.name = Path.GetFileNameWithoutExtension(soundFile);
             if (!pack.Sounds.TryAdd(clip.name, clip))
-                Debug.LogError($"Failed to add {soundFile} because texture of that name already exists in the same pack!");
+                RHLog.Error($"Failed to add {soundFile} because texture of that name already exists in the same pack!");
         }
 
         // TODO: multithread sound loading so it loads sounds faster
@@ -211,7 +211,7 @@ public class TexturePack
         foreach (var clip in clips.Result)
         {
             if (!pack.Sounds.TryAdd(clip.name, clip))
-                Debug.LogError($"Failed to add {clip.name} because that clip already exists in the same pack!");
+                //Debug.LogError($"Failed to add {clip.name} because that clip already exists in the same pack!");
         }*/
         
         return pack;

@@ -55,7 +55,7 @@ public static class RHCommands
             var aa = a.GetHashCode(); var bb = b.GetHashCode();
         }
         catch (ArgumentOutOfRangeException e)
-        { Debug.LogWarning("Failed to move packs!"); return; }
+        { RHLog.Warning("Failed to move packs!"); return; }
         
         TexturePack previousPack = ResourcePacksManager.LoadedPacks[nextPackIndex];
         ResourcePacksManager.LoadedPacks[nextPackIndex] = pack;
@@ -67,8 +67,8 @@ public static class RHCommands
         const string helpText = $"Usage: {MoveCommand} [pack guid/pack index] [up/down]\nResource packs at the bottom of the loaded list will override textures at the top, use this command to move a texture pack up or down the list.";
         if (args.Length != 2)
         {
-            CommandConsole.LogError("Invalid number of arguments!");
-            CommandConsole.Log(helpText);
+            RHLog.Player.Error("Invalid number of arguments!");
+            RHLog.Player.Info(helpText);
             return;
         }
 
@@ -81,8 +81,8 @@ public static class RHCommands
             
             if (pack == null)
             {
-                CommandConsole.LogError($"Invalid first argument!\nThe resource pack at index {index} doesn't exist!");
-                CommandConsole.Log(helpText);
+                RHLog.Player.Error($"Invalid first argument!\nThe resource pack at index {index} doesn't exist!");
+                RHLog.Player.Info(helpText);
                 return;
             }
         }
@@ -92,8 +92,8 @@ public static class RHCommands
             pack = ResourcePacksManager.LoadedPacks.FirstOrDefault(p => p.guid == packName);
             if (pack == null)
             {
-                CommandConsole.LogError($"Invalid first argument!\nThe resource pack with guid '{packName}' doesn't exist!");
-                CommandConsole.Log(helpText);
+                RHLog.Player.Error($"Invalid first argument!\nThe resource pack with guid '{packName}' doesn't exist!");
+                RHLog.Player.Info(helpText);
                 return;
             }
         }
@@ -101,17 +101,17 @@ public static class RHCommands
         string dir = args[1].ToLower();
         if (dir is not ("up" or "down" or "u" or "d"))
         {
-            CommandConsole.LogError("Invalid second argument!\nExpected: up or down");
-            CommandConsole.Log(helpText);
+            RHLog.Player.Error("Invalid second argument!\nExpected: up or down");
+            RHLog.Player.Info(helpText);
             return;
         }
         
         bool isUp = dir is "up" or "u";
         MovePack(pack, isUp);
         
-        CommandConsole.Log("Reloading packs...");
-        ResourcePacksManager.ReloadPacks_Internal(Debug.Log);
-        CommandConsole.Log($"Moved {pack.name} {'{'}{pack.guid}{'}'} {(isUp ? "up" : "down")} successfully!");
+        RHLog.Player.Info("Reloading packs...");
+        ResourcePacksManager.ReloadPacks_Internal();
+        RHLog.Player.Info($"Moved {pack.name} {'{'}{pack.guid}{'}'} {(isUp ? "up" : "down")} successfully!");
     }
     
     private static void ListPacks(string[] args)
@@ -119,13 +119,14 @@ public static class RHCommands
         for (int i = 0; i < ResourcePacksManager.LoadedPacks.Count; i++)
         {
             var pack = ResourcePacksManager.LoadedPacks[i];
-            CommandConsole.Log($"{(!pack.IsActive ? "[DISABLED] " : $"[{i}] ")}{pack.name} by {pack.author}\n-- description:\n{pack.desc}\n-- guid: '{pack.guid}'\n____", true);
+            RHLog.Player.Info($"{(!pack.IsActive ? "[DISABLED] " : $"[{i}] ")}{pack.name} by {pack.author}\n-- description:\n{pack.desc}\n-- guid: '{pack.guid}'\n____");
         }
     }
     
     private static void ReloadPacks(string[] args)
     {
-        ResourcePacksManager.ReloadPacks_Internal(str => CommandConsole.Log(str, true));
+        ResourcePacksManager.ReloadPacks_Internal();
+        RHLog.Player.Info("Resource packs reloaded successfully!");
     }
 
     private static TexturePack? GetPackFromArgs(string[] args, Action<string> logErr)
@@ -159,50 +160,50 @@ public static class RHCommands
     private static void DisablePack(string[] args)
     {
         const string helpText = $"Usage: {DisableCommand} [pack guid/pack index]\nDisables a resource pack.";
-        TexturePack? pack = GetPackFromArgs(args, CommandConsole.LogError);
+        TexturePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
         if (pack == null)
         {
-            CommandConsole.Log(helpText, true);
+            RHLog.Player.Info(helpText);
             return;
         }
         
         pack.IsActive = false;
-        CommandConsole.Log("Reloading packs...");
-        ResourcePacksManager.ReloadPacks_Internal(Debug.Log);
-        CommandConsole.Log($"Disabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
+        RHLog.Player.Info("Reloading packs...");
+        ResourcePacksManager.ReloadPacks_Internal();
+        RHLog.Player.Info($"Disabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
     }
     private static void EnablePack(string[] args)
     {
         const string helpText = $"Usage: {EnableCommand} [pack guid/pack index]\nEnables a resource pack.";
-        TexturePack? pack = GetPackFromArgs(args, CommandConsole.LogError);
+        TexturePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
         if (pack == null)
         {
-            CommandConsole.Log(helpText, true);
+            RHLog.Player.Info(helpText);
             return;
         }
 
         pack.IsActive = true;
-        CommandConsole.Log("Reloading packs...");
-        ResourcePacksManager.ReloadPacks_Internal(Debug.Log);
-        CommandConsole.Log($"Enabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
+        RHLog.Player.Info("Reloading packs...");
+        ResourcePacksManager.ReloadPacks_Internal();
+        RHLog.Player.Info($"Enabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
     }
 
     private static void DumpAllToPack(string[] args)
     {
         if (args.Any(arg => arg.ToLower() == "help"))
         {
-            CommandConsole.Log("Use this command to generate a resource pack that contains every in-game asset. Good to find assets to replace but beware that there will probably be unused assets!", true);
+            RHLog.Player.Info("Use this command to generate a resource pack that contains every in-game asset. Good to find assets to replace but beware that there will probably be unused assets!");
             return;
         }
         
         bool isConfirmed = args.Any(arg => arg.ToLower() == "confirm");
         if (!isConfirmed)
         {
-            CommandConsole.LogError($"Warning: This takes up alot of storage space due to uncompressed audio!\nTHIS WILL ALSO END YOUR RUN AND LOAD YOU BACK TO THE MAIN MENU!!\nARE YOU SURE? (type '{DumpCommand} confirm')");
+            RHLog.Player.Error($"Warning: This takes up alot of storage space due to uncompressed audio!\nTHIS WILL ALSO END YOUR RUN AND LOAD YOU BACK TO THE MAIN MENU!!\nARE YOU SURE? (type '{DumpCommand} confirm')");
             return;
         }
         
-        CommandConsole.Log("Dumping all resources to a template texture pack [this will take some time]...", true);
+        RHLog.Player.Info("Dumping all resources to a template texture pack [this will take some time]...");
         List<Texture2D> textures = [];
         List<Texture2D> spriteTextures = [];
         List<AudioClip> sounds = [];
@@ -215,7 +216,7 @@ public static class RHCommands
         Sprite[] sprites = Resources.FindObjectsOfTypeAll<Sprite>();
         spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !spriteTextures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
-        CommandConsole.Log("Loading Playground [to extract assets]", true);
+        RHLog.Player.Info("Loading Playground [to extract assets]");
         SceneManager.LoadScene("Playground");
         texture2Ds = Resources.FindObjectsOfTypeAll<Texture2D>();
         textures.AddRange(texture2Ds.Where(tex => !textures.Contains(tex)));
@@ -224,7 +225,7 @@ public static class RHCommands
         sprites = Resources.FindObjectsOfTypeAll<Sprite>();
         spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !spriteTextures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
-        CommandConsole.Log("Loading Training-Level [to extract assets]", true);
+        RHLog.Player.Info("Loading Training-Level [to extract assets]");
         SceneManager.LoadScene("Training-Level");
         texture2Ds = Resources.FindObjectsOfTypeAll<Texture2D>();
         textures.AddRange(texture2Ds.Where(tex => !textures.Contains(tex)));
@@ -233,7 +234,7 @@ public static class RHCommands
         sprites = Resources.FindObjectsOfTypeAll<Sprite>();
         spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !spriteTextures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
-        CommandConsole.Log("Loading Main-Menu [to extract assets and finish]", true);
+        RHLog.Player.Info("Loading Main-Menu [to extract assets and finish]");
         SceneManager.LoadScene("Main-Menu");
         texture2Ds = Resources.FindObjectsOfTypeAll<Texture2D>();
         textures.AddRange(texture2Ds.Where(tex => !textures.Contains(tex)));
@@ -242,7 +243,7 @@ public static class RHCommands
         sprites = Resources.FindObjectsOfTypeAll<Sprite>();
         spriteTextures.AddRange(sprites.Where(sprite => sprite.texture && !spriteTextures.Contains(sprite.texture)).Select(sprite => sprite.texture));
         
-        CommandConsole.Log("Packing assets...", true);
+        RHLog.Player.Info("Packing assets...");
         
         int texturesAmnt = textures.Count;
         int spriteTexturesAmnt = spriteTextures.Count;
@@ -278,7 +279,7 @@ public static class RHCommands
             {
                 if (!texture.isReadable)
                 {
-                    CommandConsole.Log($"{texture.name} isn't readable, saving the slow way...", true);
+                    RHLog.Player.Info($"{texture.name} isn't readable, saving the slow way...");
                     RenderTexture renderTexture = new RenderTexture(texture.width, texture.height, 24);
 
                     var oldActive = RenderTexture.active;
@@ -312,7 +313,7 @@ public static class RHCommands
             }
             catch (Exception e)
             {
-                CommandConsole.LogError($"{texture.name} failed because {e.Message}");
+                RHLog.Player.Error($"{texture.name} failed because {e.Message}");
             }
 
             return saved;
@@ -321,7 +322,7 @@ public static class RHCommands
         for (int i = 0; i < texturesAmnt; i++)
         {
             var texture = textures[i];
-            CommandConsole.Log($"Saving textures ({i}/{texturesAmnt})", true);
+            RHLog.Player.Info($"Saving textures ({i}/{texturesAmnt})");
             textureInfo.Append(texture.name);
             bool saved = false;
             try
@@ -330,7 +331,7 @@ public static class RHCommands
             }
             catch (Exception e)
             {
-                CommandConsole.LogError($"{texture.name} failed because {e.Message}");
+                RHLog.Player.Error($"{texture.name} failed because {e.Message}");
             }
 
             if (saved) savedTextures++;
@@ -339,7 +340,7 @@ public static class RHCommands
         for (int i = 0; i < spriteTexturesAmnt; i++)
         {
             var spriteTexture = spriteTextures[i];
-            CommandConsole.Log($"Saving textures ({i}/{spriteTexturesAmnt})", true);
+            RHLog.Player.Info($"Saving textures ({i}/{spriteTexturesAmnt})");
             spriteTextureInfo.Append(spriteTexture.name);
             bool saved = false;
             try
@@ -348,7 +349,7 @@ public static class RHCommands
             }
             catch (Exception e)
             {
-                CommandConsole.LogError($"{spriteTexture.name} failed because {e.Message}");
+                RHLog.Player.Error($"{spriteTexture.name} failed because {e.Message}");
             }
 
             if (saved) savedSprites++;
@@ -357,7 +358,7 @@ public static class RHCommands
         for (int i = 0; i < soundsAmnt; i++)
         {
             var clip = sounds[i];
-            CommandConsole.Log($"Saving sounds ({i}/{soundsAmnt})", true);
+            RHLog.Player.Info($"Saving sounds ({i}/{soundsAmnt})");
             audioInfo.Append(clip.name);
             bool saved = false;
             try
@@ -366,7 +367,7 @@ public static class RHCommands
                 var data = new float[clip.samples * clip.channels];
                 if (!clip.GetData(data, 0))
                 {
-                    CommandConsole.LogError($"Failed to access {clip.name}'s audio data!");
+                    RHLog.Player.Error($"Failed to access {clip.name}'s audio data!");
                     audioInfo.AppendLine(" [failed to extract]");
                     continue;
                 }
@@ -427,12 +428,12 @@ public static class RHCommands
             }
             catch (Exception e)
             {
-                CommandConsole.Log($"{clip.name} failed because {e.Message}", true);
+                RHLog.Player.Info($"{clip.name} failed because {e.Message}");
             }
             audioInfo.AppendLine(saved ? "" : " [failed to extract]");
         }
 
-        CommandConsole.Log($"Writing data files", true);
+        RHLog.Player.Info($"Writing data files");
         // template json
         File.WriteAllText(Path.Combine(path, "info.json"), TexturePack.DefaultJson);
         // export info
@@ -440,9 +441,9 @@ public static class RHCommands
         File.WriteAllText(Path.Combine(path, "sprite_textures_list.txt"), spriteTextureInfo.ToString());
         File.WriteAllText(Path.Combine(path, "audio_list.txt"), audioInfo.ToString());
         
-        CommandConsole.Log($"Successfully saved {savedTextures} of {texturesAmnt} textures!", true);
-        CommandConsole.Log($"Successfully saved {savedSprites} of {spriteTexturesAmnt} sprite textures!", true);
-        CommandConsole.Log($"Successfully saved {savedSounds} of {soundsAmnt} sounds!", true);
-        CommandConsole.Log($"Packed all assets to '{path}'", true);
+        RHLog.Player.Info($"Successfully saved {savedTextures} of {texturesAmnt} textures!");
+        RHLog.Player.Info($"Successfully saved {savedSprites} of {spriteTexturesAmnt} sprite textures!");
+        RHLog.Player.Info($"Successfully saved {savedSounds} of {soundsAmnt} sounds!");
+        RHLog.Player.Info($"Packed all assets to '{path}'");
     }
 }
