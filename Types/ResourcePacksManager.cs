@@ -117,10 +117,10 @@ public static class ResourcePacksManager
     // exposed api ig
     public static void ReloadPacks()
     {
-        ResourcePacksManager.ReloadPacks_Internal(Debug.Log);
+        ResourcePacksManager.ReloadPacks_Internal();
     }
     
-    internal static void ReloadPacks_Internal(Action<string> log)
+    internal static void ReloadPacks_Internal()
     {
         ResourcePacksManager.HasPacksChanged = false;
         if (LoadedPacks.Count != 0)
@@ -129,13 +129,13 @@ public static class ResourcePacksManager
             SaveDisabledPacks();
         }
         LoadedPacks.Clear();
-        log("Expanding zips...");
+        RHLog.Info("Expanding zips...");
         string[] zipPaths = Directory.GetFiles(Plugin.ConfigFolder, "*.zip", SearchOption.TopDirectoryOnly);
         foreach (string zipPath in zipPaths)
         {
             try
             {
-                log($"Expanding texture pack zip: {zipPath}");
+                RHLog.Info($"Expanding texture pack zip: {zipPath}");
                 bool isTopLevelZip = true;
                 using (ZipArchive zip = ZipFile.OpenRead(zipPath))
                     isTopLevelZip = zip.GetEntry("info.json") != null;
@@ -149,15 +149,15 @@ public static class ResourcePacksManager
                     ZipFile.ExtractToDirectory(zipPath, Plugin.ConfigFolder);
                 
                 File.Delete(zipPath);
-                log($"Expanded!");
+                RHLog.Info($"Expanded!");
             }
             catch (Exception e)
             {
-                log($"Failed to expand!");
-                Debug.LogError(e);
+                RHLog.Info($"Failed to expand!");
+                RHLog.Error(e);
             }
         }
-        log("Loading texture packs...");
+        RHLog.Info("Loading texture packs...");
         List<string> paths = new();
         paths.AddRange(Directory.GetDirectories(Plugin.ConfigFolder, "*", SearchOption.TopDirectoryOnly));
         // incase some people wanna upload packs to thunderstore... for some reason
@@ -170,27 +170,27 @@ public static class ResourcePacksManager
             
             try
             {
-                log($"Loading texture pack: {path}");
+                RHLog.Info($"Loading texture pack: {path}");
                 TexturePack? pack = TexturePack.Load(path);
                 if (pack == null)
-                    Debug.LogWarning($"Failed to load pack at {path}!");
+                    RHLog.Warning($"Failed to load pack at {path}!");
 
                 LoadedPacks.Add(pack);
-                log($"Loaded!");
+                RHLog.Info($"Loaded!");
             }
             catch (Exception e)
             {
-                log($"Failed to load!");
-                Debug.LogError(e);
+                RHLog.Info($"Failed to load!");
+                RHLog.Error(e);
             }
         }
 
-        log("Re-ordering to user order...");
+        RHLog.Info("Re-ordering to user order...");
         LoadPackOrder();
-        log("Disabling packs that should be disabled...");
+        RHLog.Info("Disabling packs that should be disabled...");
         LoadDisabledPacks();
 
-        log($"Loaded {LoadedPacks.Count}/{paths.Count} texture packs");
+        RHLog.Info($"Loaded {LoadedPacks.Count}/{paths.Count} texture packs");
 
         // attempt to refresh previously loaded stuff
         Plugin.RefreshTextures();

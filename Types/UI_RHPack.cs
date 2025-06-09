@@ -90,7 +90,7 @@ public class UI_RHPack : MonoBehaviour
         EnableToggle!.onValueChanged.AddListener((newVal) =>
         {
             _pack.IsActive = newVal;
-            ResourcePacksManager.ReloadPacks_Internal(Debug.Log);
+            ResourcePacksManager.ReloadPacks_Internal();
             UI_RHPacksList.Instance.BuildList();
         });
     }

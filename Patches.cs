@@ -44,7 +44,7 @@ public static class SpriteRendererPatches
             else
             {
                 #if DEBUG
-                Debug.Log($"{spriteCacheName} is null now for some reason [cached]");
+                RHLog.Info($"{spriteCacheName} is null now for some reason [cached]");
                 #endif
                 _customSpriteCache.Remove(spriteCacheName);
             }
@@ -62,9 +62,9 @@ public static class SpriteRendererPatches
         var localSprite = Sprite.Create(texture, new Rect(clampedX, clampedY, clampedWidth, clampedHeight), new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height), sprite.pixelsPerUnit);
         localSprite.name = spriteCacheName + Plugin.ModifiedStr;
 #if DEBUG
-        Debug.Log($"cached {spriteCacheName} as {localSprite}");
+        RHLog.Info($"cached {spriteCacheName} as {localSprite}");
         if(isModifiedSprite)
-            Debug.LogWarning("cached a modified sprite? idk some fucky stuff is going on");
+            RHLog.Warning("cached a modified sprite? idk some fucky stuff is going on");
 #endif
         
         _customSpriteCache.Add(spriteCacheName, localSprite);
@@ -78,7 +78,7 @@ public static class SpriteRendererPatches
         __instance.sprite = __instance.sprite;
         
 #if DEBUG
-        Debug.Log($"{__instance?.sprite?.texture.name} was accessed [ctor]");
+        RHLog.Info($"{__instance?.sprite?.texture.name} was accessed [ctor]");
 #endif
     }
 
@@ -115,7 +115,7 @@ public static class AudioSourcePatches
     private static void Constructor_Postfix(AudioSource __instance) // i dont think this gets called
     {
 #if DEBUG
-        Debug.Log($"{__instance?.clip.name} was accessed [ctor]");
+        RHLog.Info($"{__instance?.clip.name} was accessed [ctor]");
 #endif
         
         if(__instance == null) return;
@@ -283,14 +283,14 @@ public static class RendererPatches
     private static void Constructor_Postfix(Renderer __instance)
     {
 #if DEBUG
-        Debug.Log($"{__instance?.name} (Renderer) was accessed [ctor]");
+        RHLog.Info($"{__instance?.name} (Renderer) was accessed [ctor]");
 #endif
 
         foreach (var material in __instance.sharedMaterials)
         {
             if(!material.HasProperty(MainTex)) continue;
 #if DEBUG
-            Debug.Log("invoking material.mainTexture [passing to patch]");
+            RHLog.Info("invoking material.mainTexture [passing to patch]");
 #endif
             var texture = material.mainTexture;
         }

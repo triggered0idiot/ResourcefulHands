@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,7 +18,7 @@ public class UI_RHPacksList : MonoBehaviour
         Instance = this;
         scrollRect = this.GetComponentInChildren<ScrollRect>();
         container = scrollRect.content;
-        packTemplate = container.Find("Pack").AddComponent<UI_RHPack>();
+        packTemplate = container.Find("Pack").gameObject.AddComponent<UI_RHPack>();
         packTemplate.gameObject.SetActive(false);
     }
 

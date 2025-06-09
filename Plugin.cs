@@ -2,17 +2,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using BepInEx;
+using BepInEx.Logging;
 using HarmonyLib;
-using Newtonsoft.Json;
 using ResourcefulHands.Patches;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem.HID;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -43,6 +40,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         private set => _assets = value;
     }
     public static Plugin Instance { get; private set; } = null!;
+    internal static ManualLogSource Log { get; private set; } = null!; // create log source for RHLog
     public static string ConfigFolder => Path.Combine(Paths.ConfigPath, "RHPacks");
     
     public static bool IsDemo
@@ -53,11 +51,11 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             {
                 var appid = Steamworks.SteamClient.AppId;
 #if DEBUG
-                Debug.Log($"Appid: {appid}");
+                RHLog.Info($"Appid: {appid}");
 #endif
                 if (appid.Value == 3218540) // 3195790 = full game, 3218540 = demo
                     return true;
-            }catch(Exception e){Debug.LogError(e);}
+            }catch(Exception e){RHLog.Error(e);}
             return false;
         }
     }
@@ -92,7 +90,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 try
                 { material.SetTexture(corruptTextureID, corruptTexture); }
                 catch (Exception e)
-                { Debug.LogError(e); }
+                { RHLog.Error(e); }
             }
         }
 
@@ -115,7 +113,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
     {
         yield return new WaitForSecondsRealtime(1.0f);
         
-        Debug.Log("Loading custom settings menu...");
+        RHLog.Info("Loading custom settings menu...");
         try
         {
             var tabGroups = settingsMenu.GetComponentsInChildren<UI_TabGroup>();
@@ -181,14 +179,15 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         }
         catch (Exception e)
         {
-            Debug.LogError("Failed to load custom settings menu:\n"+e.ToString());
+            RHLog.Error("Failed to load custom settings menu:\n"+e.ToString());
         }
     }
     
     public void Awake()
     {
+        Log = Logger;
         Instance = this;
-        Debug.Log("Setting up config");
+        RHLog.Info("Setting up config");
         if (!Directory.Exists(ConfigFolder))
             Directory.CreateDirectory(ConfigFolder);
         
@@ -201,7 +200,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             if(scene.name.ToLower().Contains("main-menu")) hasLoadedIntro = true;
             
             if (ResourcePacksManager.HasPacksChanged && hasLoadedIntro)
-                ResourcePacksManager.ReloadPacks_Internal(Debug.Log);
+                ResourcePacksManager.ReloadPacks_Internal();
             
             RHCommands.RefreshCommands();
 
