@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace ResourcefulHands;
 
+// TODO: add debug tools
 public class DebugTools : MonoBehaviour
 {
     public static DebugTools Instance;
