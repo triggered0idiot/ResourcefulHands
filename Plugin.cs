@@ -212,7 +212,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             var settingsMenu = Object.FindObjectsOfType<UI_SettingsMenu>(true).FirstOrDefault(m => m.gameObject.scene == scene);
             if (settingsMenu && Assets != null) // right now i don't think there is a "standard" way to inject a custom menu into settings, so this will prolly break if another mod does this too
             {
-                StartCoroutine(LoadCustomSettings(settingsMenu));
+                CoroutineDispatcher.Dispatch(LoadCustomSettings(settingsMenu));
             }
             
             RefreshTextures();
