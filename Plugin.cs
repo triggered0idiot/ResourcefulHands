@@ -27,18 +27,23 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
     {
         get
         {
-            if (_assets == null)
-            {
-                Assembly assembly = Assembly.GetExecutingAssembly();
-                string resourceName = $"ResourcefulHands.rh_assets.bundle";
-                using Stream? stream = assembly.GetManifestResourceStream(resourceName);
-                if(stream != null)
-                    _assets = AssetBundle.LoadFromStream(stream);
-            }
+            if (_assets != null) return _assets;
+            
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            string resourceName = $"ResourcefulHands.rh_assets.bundle";
+            using Stream? stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream != null)
+                _assets = AssetBundle.LoadFromStream(stream);
+                
+            CorruptionTexture = Plugin.Assets?.LoadAsset<Texture2D>("Corruption1");
+            Icon = Plugin.Assets?.LoadAsset<Texture2D>("icon");
             return _assets;
         }
         private set => _assets = value;
     }
+    public static Texture2D? CorruptionTexture;
+    public static Texture2D? Icon;
+    
     public static Plugin Instance { get; private set; } = null!;
     internal static ManualLogSource Log { get; private set; } = null!; // create log source for RHLog
     public static string ConfigFolder => Path.Combine(Paths.ConfigPath, "RHPacks");
@@ -75,9 +80,6 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         // special checks for the mass texture
         int corruptTextureID = Shader.PropertyToID("_CORRUPTTEXTURE");
         Texture2D? corruptTexture = ResourcePacksManager.GetTextureFromPacks("_CORRUPTTEXTURE");
-        // TODO: for some reason custom mass textures break the original (and im too tired to figure it out rn) so this is a quick fix
-        if(corruptTexture == null)
-            corruptTexture = Assets.LoadAsset<Texture2D>("Corruption1");
         
         foreach (var material in allMaterials)
         {
@@ -197,6 +199,9 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         bool hasLoadedIntro = false;
         SceneManager.sceneLoaded += (scene, mode) =>
         {
+            if(!hasLoadedIntro)
+                Assets?.LoadAllAssets();
+            
             if(scene.name.ToLower().Contains("main-menu")) hasLoadedIntro = true;
             
             if (ResourcePacksManager.HasPacksChanged && hasLoadedIntro)

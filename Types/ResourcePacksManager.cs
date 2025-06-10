@@ -28,8 +28,13 @@ public static class ResourcePacksManager
             if(myTexture != null)
                 texture = myTexture;
         }
+
+        if (texture) return texture;
+
+        if (textureName == "DeathFloor_02" || textureName == "_CORRUPTTEXTURE")
+            return Plugin.CorruptionTexture;
         
-        return texture;
+        return null;
     }
     public static AudioClip? GetSoundFromPacks(string soundName)
     {
