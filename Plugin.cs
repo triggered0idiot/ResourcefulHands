@@ -16,7 +16,7 @@ using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
 
-[BepInPlugin(GUID, "Resourceful Hands", "0.9.5")] // Resourceful Hands
+[BepInPlugin(GUID, "Resourceful Hands", "0.9.6")] // Resourceful Hands
 public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of logging instead of mixing Debug.Log and CommandConsole.Log
 {
     public const string GUID = "triggeredidiot.wkd.resourcefulhands";
