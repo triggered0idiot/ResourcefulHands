@@ -37,12 +37,14 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 
             CorruptionTexture = Plugin.Assets?.LoadAsset<Texture2D>("Corruption1");
             Icon = Plugin.Assets?.LoadAsset<Texture2D>("icon");
+            IconGray = Plugin.Assets?.LoadAsset<Texture2D>("gray_icon");
             return _assets;
         }
         private set => _assets = value;
     }
     public static Texture2D? CorruptionTexture;
     public static Texture2D? Icon;
+    public static Texture2D? IconGray;
     
     public static Plugin Instance { get; private set; } = null!;
     internal static ManualLogSource Log { get; private set; } = null!; // create log source for RHLog
@@ -133,6 +135,9 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                 Button reloadButton = menu.transform.Find("Reload")
                     .GetComponentInChildren<Button>();
                 reloadButton.onClick.AddListener(ResourcePacksManager.ReloadPacks);
+                Button openFolder = menu.transform.Find("OpenFolder")
+                    .GetComponentInChildren<Button>();
+                openFolder.onClick.AddListener(() => Application.OpenURL("file://" + ConfigFolder.Replace("\\", "/")));
                 
                 menu.AddComponent<UI_RHPacksList>();
                 menu.SetActive(false);
