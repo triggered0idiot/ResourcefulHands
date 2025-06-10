@@ -21,6 +21,8 @@ Additionally, ResourcefulHands comes with built in commands to use if you prefer
 | Swapping hand sprites          | ✔️ | ✔️ |
 | Swapping environment textures  | ✔️ | ~ |
 | Swapping mass textures         | ✔️ | ✔️ |
+| Swapping models                | ✔️ | ❌ |
+| Swapping shaders               | ✔️ | ❌ |
 | Supports game updates          | ❌ | ~ |
 | Cross compatable with demo     | ❌ | ~ |
 | Hot reloading                  | ❌ | ~ |
@@ -32,6 +34,8 @@ Additionally, ResourcefulHands comes with built in commands to use if you prefer
 | Swapping hand sprites          | ✔️ |
 | Swapping environment textures  | ~ |
 | Swapping mass textures         | ✔️ |
+| Swapping models                | ❌ |
+| Swapping shaders               | ❌ |
 | Supports game updates          | ~ |
 | Cross compatable with demo     | ~ |
 | Hot reloading                  | ~ |
