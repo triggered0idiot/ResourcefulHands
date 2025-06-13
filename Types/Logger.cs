@@ -1,3 +1,7 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.CompilerServices;
 using static CommandConsole;
 
 namespace ResourcefulHands;
@@ -11,10 +15,24 @@ public static class RHLog
     private const string Prefix = "[Resourceful Hands] ";
     
 
-    public static void Info(object data) => Plugin.Log.LogInfo(Prefix + data);
-    public static void Message(object data) => Plugin.Log.LogMessage(Prefix + data);
-    public static void Warning(object data) => Plugin.Log.LogWarning(Prefix + data);
-    public static void Error(object data) => Plugin.Log.LogError(Prefix + data);
+    [Conditional("DEBUG")]
+    public static void Debug(object data,
+        [CallerLineNumber] int lineNumber = 0,
+        [CallerFilePath] string file = "") => Plugin.Log.LogInfo($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
+    
+    public static void Info(object data,
+        [CallerLineNumber] int lineNumber = 0,
+        [CallerFilePath] string file = "") => Plugin.Log.LogInfo($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
+    public static void Message(object data,
+        [CallerLineNumber] int lineNumber = 0,
+        [CallerFilePath] string file = "") => Plugin.Log.LogMessage($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
+    
+    public static void Warning(object data,
+        [CallerLineNumber] int lineNumber = 0,
+        [CallerFilePath] string file = "") => Plugin.Log.LogWarning($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
+    public static void Error(object data,
+        [CallerLineNumber] int lineNumber = 0,
+        [CallerFilePath] string file = "") => Plugin.Log.LogError($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
     
     public static class Player
     {
