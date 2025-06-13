@@ -205,7 +205,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         bool hasLoadedIntro = false;
         SceneManager.sceneLoaded += (scene, mode) =>
         {
-            if(scene.name.ToLower().Contains("main-menu") && !hasLoadedIntro)
+            if(!scene.name.ToLower().Contains("intro") && !hasLoadedIntro)
             {
                 hasLoadedIntro = true;
                 Assets?.LoadAllAssets();
