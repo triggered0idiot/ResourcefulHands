@@ -242,7 +242,6 @@ public static class MaterialPatches
         
         var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
         if(texture == null) return;
-        texture = Object.Instantiate(texture);
         texture.name = mainTex.name + " [replaced]"; // change name to help with restoration?
         
         previousTextures.TryAdd(mainTex.name, mainTex);
@@ -265,7 +264,6 @@ public static class MaterialPatches
         
         var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
         if(texture == null) return;
-        texture = Object.Instantiate(texture);
         texture.name = mainTex.name + " [replaced]"; // change name to help with restoration?
         
         previousTextures.TryAdd(mainTex.name, mainTex);

@@ -209,6 +209,13 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             {
                 hasLoadedIntro = true;
                 Assets?.LoadAllAssets();
+
+                CoroutineDispatcher.AddToUpdate(() =>
+                {
+                    var spriteRenderers = FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+                    foreach (var sr in spriteRenderers) // TODO: forgive me for my sins
+                        sr.sprite = sr.sprite;
+                });
             }
             
             if (!hasLoadedIntro)
@@ -228,12 +235,6 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             RefreshTextures();
             RefreshSounds();
         };
-    }
-
-    public void LateUpdate()
-    {
-        foreach (var sr in FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None)) // TODO: forgive me for my sins
-            sr.sprite = sr.sprite;
     }
 }
 // amongus

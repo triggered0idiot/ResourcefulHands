@@ -23,17 +23,18 @@ public class UI_RHPacksList : MonoBehaviour
         packTemplate.gameObject.SetActive(false);
     }
 
-    // temp fix for ui not refreshing properly
-    void FixedUpdate()
+    // this attempts to refresh any ui elements in the packs list
+    IEnumerator EnableCoroutine()
     {
-        BuildList();
-        this.gameObject.SetActive(false);
-        this.gameObject.SetActive(true);
+        container?.gameObject.SetActive(false);
+        yield return new WaitForSecondsRealtime(0.075f);
+        container?.gameObject.SetActive(true);
     }
 
     public void OnEnable()
     {
         BuildList();
+        CoroutineDispatcher.Dispatch(EnableCoroutine());
     }
 
     void ClearList()
