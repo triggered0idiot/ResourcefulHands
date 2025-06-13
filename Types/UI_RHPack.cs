@@ -81,17 +81,21 @@ public class UI_RHPack : MonoBehaviour
         {
             RHCommands.MovePack(_pack, true);
             UI_RHPacksList.Instance.BuildList();
+            ResourcePacksManager.ReloadPacks_Internal();
         });
         Down!.onClick.AddListener(() =>
         {
             RHCommands.MovePack(_pack, false);
             UI_RHPacksList.Instance.BuildList();
+            ResourcePacksManager.ReloadPacks_Internal();
         });
         EnableToggle!.onValueChanged.AddListener((newVal) =>
         {
             _pack.IsActive = newVal;
-            ResourcePacksManager.ReloadPacks_Internal();
+            RHCommands.MovePack(_pack, false);
+            RHCommands.MovePack(_pack, true);
             UI_RHPacksList.Instance.BuildList();
+            ResourcePacksManager.ReloadPacks_Internal();
         });
     }
 }

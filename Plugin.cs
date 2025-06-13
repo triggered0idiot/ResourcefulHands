@@ -34,10 +34,11 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             using Stream? stream = assembly.GetManifestResourceStream(resourceName);
             if (stream != null)
                 _assets = AssetBundle.LoadFromStream(stream);
-                
-            CorruptionTexture = Plugin.Assets?.LoadAsset<Texture2D>("Corruption1");
-            Icon = Plugin.Assets?.LoadAsset<Texture2D>("icon");
-            IconGray = Plugin.Assets?.LoadAsset<Texture2D>("gray_icon");
+
+            CorruptionTexture = (_assets?.LoadAsset<Texture2D>("Corruption1"));
+            Icon = (_assets?.LoadAsset<Texture2D>("icon"));
+            IconGray = (_assets?.LoadAsset<Texture2D>("gray_icon"));
+            
             return _assets;
         }
         private set => _assets = value;
@@ -204,12 +205,16 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         bool hasLoadedIntro = false;
         SceneManager.sceneLoaded += (scene, mode) =>
         {
-            if(!hasLoadedIntro)
+            if(scene.name.ToLower().Contains("main-menu") && !hasLoadedIntro)
+            {
+                hasLoadedIntro = true;
                 Assets?.LoadAllAssets();
+            }
             
-            if(scene.name.ToLower().Contains("main-menu")) hasLoadedIntro = true;
+            if (!hasLoadedIntro)
+                return;
             
-            if (ResourcePacksManager.HasPacksChanged && hasLoadedIntro)
+            if (ResourcePacksManager.HasPacksChanged)
                 ResourcePacksManager.ReloadPacks_Internal();
             
             RHCommands.RefreshCommands();

@@ -21,19 +21,14 @@ public class UI_RHPacksList : MonoBehaviour
         container = scrollRect.content;
         packTemplate = container.Find("Pack").gameObject.AddComponent<UI_RHPack>();
         packTemplate.gameObject.SetActive(false);
-        StartCoroutine(RebuildLoop());
     }
 
     // temp fix for ui not refreshing properly
-    IEnumerator RebuildLoop()
+    void FixedUpdate()
     {
-        while (true)
-        {
-            BuildList();
-            yield return new WaitForSecondsRealtime(0.25f);
-            this.gameObject.SetActive(false);
-            this.gameObject.SetActive(true);
-        }
+        BuildList();
+        this.gameObject.SetActive(false);
+        this.gameObject.SetActive(true);
     }
 
     public void OnEnable()
