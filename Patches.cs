@@ -7,6 +7,8 @@ using UnityEngine.UI;
 
 namespace ResourcefulHands.Patches;
 
+// NOTE: some debug related patches are in DebugTools.cs
+
 // thanks McArdellje
 [HarmonyPatch(typeof(Image))]
 public static class ImagePatches

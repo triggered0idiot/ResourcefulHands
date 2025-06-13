@@ -16,6 +16,8 @@ using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
 
+// TODO: FIXME: crashing
+
 [BepInPlugin(GUID, "Resourceful Hands", "0.9.6")] // Resourceful Hands
 public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of logging instead of mixing Debug.Log and CommandConsole.Log
 {
@@ -216,6 +218,8 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                     foreach (var sr in spriteRenderers) // TODO: forgive me for my sins
                         sr.sprite = sr.sprite;
                 });
+                
+                DebugTools.Create();
             }
             
             if (!hasLoadedIntro)
