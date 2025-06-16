@@ -47,19 +47,23 @@ public class DebugTools : MonoBehaviour
         _style = new GUIStyle
         {
             fontSize = 32,
-            fontStyle = FontStyle.Bold
+            fontStyle = FontStyle.Bold,
+            normal = new GUIStyleState { textColor = Color.white }
         };
     }
 
     public void OnGUI()
     {
         if(!isOn) return;
+
+        var prevColor = GUI.contentColor;
         
+        GUI.contentColor = Color.white;
         GUILayout.Label("Recent sounds:", _style);
         foreach (var clip in _playingClips)
-        {
             GUILayout.Label(clip.name, _style);
-        }
+        
+        GUI.contentColor = prevColor;
     }
 }
 

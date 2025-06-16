@@ -127,7 +127,7 @@ public static class AudioSourcePatches
         if (newClip != null)
         {
             __instance.clip = newClip;
-            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
+            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f && !__instance.isPlaying)
             {
                 dontPatch = true;
                 __instance.Play();
@@ -152,7 +152,7 @@ public static class AudioSourcePatches
             dontPatch = true;
             __instance.clip = newClip;
             value = newClip;
-            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
+            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f && !__instance.isPlaying)
             {
                 dontPatch = true;
                 __instance.Play();
@@ -175,7 +175,7 @@ public static class AudioSourcePatches
             dontPatch = true;
             __instance.clip = newClip;
             __result = newClip;
-            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
+            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f && !__instance.isPlaying)
             {
                 dontPatch = true;
                 __instance.Play();
