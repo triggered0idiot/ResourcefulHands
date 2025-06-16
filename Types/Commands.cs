@@ -151,7 +151,7 @@ public static class RHCommands
         else
         {
             packName = args[0].ToLower();
-            pack = ResourcePacksManager.LoadedPacks.FirstOrDefault(p => p.guid == packName);
+            pack = ResourcePacksManager.LoadedPacks.FirstOrDefault(p => p.guid.ToLower() == packName);
             if (pack == null)
             {
                 logErr($"Invalid first argument!\nThe resource pack with guid '{packName}' doesn't exist!");
