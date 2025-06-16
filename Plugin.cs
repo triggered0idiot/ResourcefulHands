@@ -198,6 +198,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         RHLog.Info("Setting up config");
         if (!Directory.Exists(ConfigFolder))
             Directory.CreateDirectory(ConfigFolder);
+        RHConfig.BindConfigs();
         
         Harmony = new Harmony(GUID);
         Harmony.PatchAll();

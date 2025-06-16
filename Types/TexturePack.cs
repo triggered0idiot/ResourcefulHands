@@ -1,7 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
+using HarmonyLib;
 using Newtonsoft.Json;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
 
@@ -47,6 +52,9 @@ public class TexturePack
     [JsonIgnore]
     [System.NonSerialized]
     public Dictionary<string, AudioClip> Sounds = [];
+    [JsonIgnore]
+    [System.NonSerialized]
+    protected List<StreamedAudioClip> RawSounds = [];
     
     [JsonIgnore]
     public Texture2D Icon { get; private set; }
@@ -188,31 +196,27 @@ public class TexturePack
         }
 
         i = 0;
+        // channels, sample rate, samples, filename
+        ConcurrentStack<Tuple<int, int, float[], string>> loadedSounds = [];
+        List<Task> soundTasks = [];
         foreach (var soundFile in soundFiles)
         {
-            RHLog.Info($"Loading sounds ({i++}/{soundCount})");
+            RHLog.Info($"Queuing sounds ({i++}/{soundCount})");
             string extension = Path.GetExtension(soundFile).ToLower();
             if (extension.Contains("ogg"))
             {
                 RHLog.Warning($"{extension} isn't supported! Only mp3, wav, aiff, wma, acc files are supported! [at: {soundFile}]");
                 continue;
             }
-            
-            AudioClip clip = MiscUtils.LoadAudioClipFromFile(soundFile);
-            
+
+            var streamedClip = new StreamedAudioClip(soundFile);
+            pack.RawSounds.Add(streamedClip);
+            var clip = streamedClip.clip;
+        
             clip.name = Path.GetFileNameWithoutExtension(soundFile);
             if (!pack.Sounds.TryAdd(clip.name, clip))
                 RHLog.Error($"Failed to add {soundFile} because texture of that name already exists in the same pack!");
         }
-
-        // TODO: multithread sound loading so it loads sounds faster
-        /*var clips = MiscUtils.LoadAudioClipsAsync(soundFiles);
-        clips.Wait();
-        foreach (var clip in clips.Result)
-        {
-            if (!pack.Sounds.TryAdd(clip.name, clip))
-                //Debug.LogError($"Failed to add {clip.name} because that clip already exists in the same pack!");
-        }*/
         
         return pack;
     }

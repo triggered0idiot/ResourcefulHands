@@ -87,7 +87,7 @@ public static class MiscUtils
     {
         int lengthSamples = samples.Length / channels;
 
-        AudioClip clip = AudioClip.Create(name, lengthSamples, channels, sampleRate, false);
+        AudioClip clip = AudioClip.Create(name, lengthSamples, channels, sampleRate, true);
         clip.SetData(samples, 0);
 
         return clip;
@@ -98,49 +98,6 @@ public static class MiscUtils
         int sampleRate, channels;
         var samples = LoadAudioFile(path, out sampleRate, out channels);
         return CreateAudioClip(samples, sampleRate, channels);
-    }
-    
-    public static async Task<AudioClip[]> LoadAudioClipsAsync(string[] soundFiles) // TODO: log this properly (debug.log isnt thread safe)
-    {
-        List<Task<AudioClip?>> loadTasks = new();
-
-        foreach (var soundFile in soundFiles)
-        {
-            //ebug.Log("Scheduling audio file: " + soundFile);
-            loadTasks.Add(Task.Run(() =>
-            {
-                string extension = Path.GetExtension(soundFile).ToLowerInvariant();
-                if (extension.Contains("ogg"))
-                {
-                    //Debug.LogWarning($"Skipping unsupported format: {extension} at {soundFile}");
-                    //Debug.Log("Audio file: " + soundFile + " processed.");
-                    return null;
-                }
-
-                try
-                {
-                    AudioClip clip = MiscUtils.LoadAudioClipFromFile(soundFile);
-                    if (clip == null)
-                    {
-                        //Debug.LogError($"Failed to load AudioClip from file: {soundFile}");
-                        return null;
-                    }
-
-                    clip.name = Path.GetFileNameWithoutExtension(soundFile);
-                    //Debug.Log("Audio file: " + soundFile + " processed.");
-                    return clip;
-                }
-                catch (Exception ex)
-                {
-                    //Debug.LogError($"Exception loading sound file {soundFile}: {ex.Message}");
-                    //Debug.Log("Audio file: " + soundFile + " processed.");
-                    return null;
-                }
-            }));
-        }
-
-        AudioClip?[] results = await Task.WhenAll(loadTasks);
-        return results.Where(clip => clip != null).Cast<AudioClip>().ToArray();
     }
     
     public static string GetSHA256Checksum(string filePath)

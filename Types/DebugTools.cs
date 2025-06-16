@@ -43,6 +43,8 @@ public class DebugTools : MonoBehaviour
 #if DEBUG
         isOn = true;
 #endif
+        if (RHConfig.AlwaysDebug?.Value ?? false)
+            isOn = true;
         
         _style = new GUIStyle
         {
