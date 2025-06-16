@@ -16,8 +16,6 @@ using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
 
-// TODO: FIXME: crashing
-
 [BepInPlugin(GUID, "Resourceful Hands", "0.9.6")] // Resourceful Hands
 public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of logging instead of mixing Debug.Log and CommandConsole.Log
 {

@@ -76,6 +76,7 @@ public static class DEBUG_AudioSourcePatches
     [HarmonyPostfix]
     private static void Setter_Postfix(AudioSource __instance, ref AudioClip value)
     {
+        if(!DebugTools.isOn) return;
         if (value == null) return;
         
         if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
@@ -88,6 +89,7 @@ public static class DEBUG_AudioSourcePatches
     [HarmonyPostfix]
     private static void Getter_Postfix(AudioSource __instance, ref AudioClip __result)
     {
+        if(!DebugTools.isOn) return;
         if (__result == null) return;
         
         if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
@@ -100,6 +102,7 @@ public static class DEBUG_AudioSourcePatches
     [HarmonyPostfix]
     private static void Play_Prefix(AudioSource __instance, double delay)
     {
+        if(!DebugTools.isOn) return;
         if(__instance.clip == null) return;
         
         DebugTools.QueueSound(__instance.clip);
@@ -109,6 +112,7 @@ public static class DEBUG_AudioSourcePatches
     [HarmonyPostfix]
     private static void PlayHelper_Prefix(AudioSource source, ulong delay)
     {
+        if(!DebugTools.isOn) return;
         if(source.clip == null) return;
         
         DebugTools.QueueSound(source.clip);

@@ -16,6 +16,8 @@ public static class RHCommands
     public const string ListCommand = "listpacks";
     public const string EnableCommand = "enablepack";
     public const string DisableCommand = "disablepack";
+    
+    public const string ToggleDebug = "rhtoggledebug";
 
     public static void RefreshCommands()
     {
@@ -28,6 +30,7 @@ public static class RHCommands
             CommandConsole.RemoveCommand(ListCommand);
             CommandConsole.RemoveCommand(EnableCommand);
             CommandConsole.RemoveCommand(DisableCommand);
+            CommandConsole.RemoveCommand(ToggleDebug);
                 
             ccInst.RegisterCommand(DumpCommand, DumpAllToPack, false);
             ccInst.RegisterCommand(ReloadCommand, ReloadPacks, false);
@@ -35,6 +38,7 @@ public static class RHCommands
             ccInst.RegisterCommand(ListCommand, ListPacks, false);
             ccInst.RegisterCommand(EnableCommand, EnablePack, false);
             ccInst.RegisterCommand(DisableCommand, DisablePack, false);
+            ccInst.RegisterCommand(ToggleDebug, (args) => { DebugTools.isOn = !DebugTools.isOn; }, false);
         }
     }
     
