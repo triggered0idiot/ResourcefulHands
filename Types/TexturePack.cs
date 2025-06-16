@@ -55,9 +55,9 @@ public class TexturePack
     [JsonIgnore]
     [System.NonSerialized]
     protected List<StreamedAudioClip> RawSounds = [];
-    
+
     [JsonIgnore]
-    public Texture2D Icon { get; private set; }
+    public Texture2D Icon { get; private set; } = null!;
     
     [JsonIgnore]
     [System.NonSerialized]

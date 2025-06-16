@@ -8,7 +8,7 @@ namespace ResourcefulHands;
 
 public class UI_RHPacksList : MonoBehaviour
 {
-    public static UI_RHPacksList Instance;
+    public static UI_RHPacksList? Instance;
     
     public ScrollRect? scrollRect;
     public Transform? container;
@@ -39,11 +39,13 @@ public class UI_RHPacksList : MonoBehaviour
 
     void ClearList()
     {
+        if (container == null || packTemplate == null) return;
+        
         for (int i = 0; i < container.childCount; i++)
         {
             Transform child = container.GetChild(i);
-            if(child == packTemplate.transform) continue;
-            
+            if (child == packTemplate.transform) continue;
+
             Destroy(child.gameObject);
         }
     }
@@ -54,6 +56,8 @@ public class UI_RHPacksList : MonoBehaviour
         foreach (var pack in ResourcePacksManager.LoadedPacks)
         {
             var newPackUI = Instantiate(packTemplate, container);
+            if(newPackUI == null) continue;
+            
             var pack1 = pack;
             newPackUI.Load(pack, ResourcePacksManager.ActivePacks.FirstOrDefault(p => p == pack1) != null);
             newPackUI.gameObject.name = pack.guid;

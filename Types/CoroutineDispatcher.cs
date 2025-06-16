@@ -7,26 +7,26 @@ namespace ResourcefulHands;
 
 public class CoroutineDispatcher : MonoBehaviour
 {
-    private static CoroutineDispatcher Instance;
+    private static CoroutineDispatcher? _instance;
     private static Dictionary<string, Action> updateActions = new Dictionary<string, Action>();
 
     public static void Dispatch(IEnumerator routine)
     {
-        if (Instance == null)
+        if (_instance == null)
         {
-            Instance = new GameObject("CoroutineDispatcher").AddComponent<CoroutineDispatcher>();
-            DontDestroyOnLoad(Instance);
+            _instance = new GameObject("CoroutineDispatcher").AddComponent<CoroutineDispatcher>();
+            DontDestroyOnLoad(_instance);
         }
         
-        Instance.StartCoroutine(routine);
+        _instance.StartCoroutine(routine);
     }
 
     public static string AddToUpdate(Action action)
     {
-        if (Instance == null)
+        if (_instance == null)
         {
-            Instance = new GameObject("CoroutineDispatcher").AddComponent<CoroutineDispatcher>();
-            DontDestroyOnLoad(Instance);
+            _instance = new GameObject("CoroutineDispatcher").AddComponent<CoroutineDispatcher>();
+            DontDestroyOnLoad(_instance);
         }
         
         string guid = Guid.NewGuid().ToString();

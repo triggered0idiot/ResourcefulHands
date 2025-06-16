@@ -9,7 +9,7 @@ namespace ResourcefulHands;
 // TODO: add debug tools
 public class DebugTools : MonoBehaviour
 {
-    public static DebugTools Instance;
+    public static DebugTools? Instance;
     public static bool isOn = false;
 
     private static List<AudioClip> _playingClips = new List<AudioClip>();

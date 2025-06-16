@@ -178,7 +178,10 @@ public static class ResourcePacksManager
                 RHLog.Info($"Loading texture pack: {path}");
                 TexturePack? pack = TexturePack.Load(path);
                 if (pack == null)
+                {
                     RHLog.Warning($"Failed to load pack at {path}!");
+                    continue;
+                }
 
                 LoadedPacks.Add(pack);
                 RHLog.Info($"Loaded!");

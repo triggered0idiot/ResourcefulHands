@@ -58,7 +58,7 @@ public static class RHCommands
             var b = ResourcePacksManager.LoadedPacks[packIndex];
             var aa = a.GetHashCode(); var bb = b.GetHashCode();
         }
-        catch (ArgumentOutOfRangeException e)
+        catch (ArgumentOutOfRangeException)
         { RHLog.Warning("Failed to move packs!"); return; }
         
         TexturePack previousPack = ResourcePacksManager.LoadedPacks[nextPackIndex];

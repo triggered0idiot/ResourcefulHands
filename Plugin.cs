@@ -119,6 +119,11 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         yield return new WaitForSecondsRealtime(1.0f);
         
         RHLog.Info("Loading custom settings menu...");
+        if (Assets == null)
+        {
+            RHLog.Warning("No assets?");
+            yield break;
+        }
         try
         {
             var tabGroups = settingsMenu.GetComponentsInChildren<UI_TabGroup>();

@@ -19,7 +19,7 @@ public static class ImagePatches
     public static void Getter_sprite_Postfix(Image __instance, ref Sprite __result) {
         if (__result == null)
             return;
-        __result = SpriteRendererPatches.GetSprite(__result);
+        __result = SpriteRendererPatches.GetSprite(__result)!;
     }
 }
 
@@ -29,7 +29,7 @@ public static class SpriteRendererPatches
     private static bool dontPatch = false; // prevents loopbacks
     internal static Dictionary<string, Sprite> _customSpriteCache { get; private set; } = new();
 
-    public static Sprite GetSprite(Sprite sprite)
+    public static Sprite? GetSprite(Sprite sprite)
     {
         if (sprite == null)
             return sprite;
@@ -91,7 +91,7 @@ public static class SpriteRendererPatches
         if (dontPatch)
         { dontPatch = false; return; }
         
-        __result = GetSprite(__result);
+        __result = GetSprite(__result)!;
         dontPatch = true;
         __instance.sprite = __result;
     }
@@ -103,7 +103,7 @@ public static class SpriteRendererPatches
         if (dontPatch)
         { dontPatch = false; return; }
         
-        value = GetSprite(value);
+        value = GetSprite(value)!;
         dontPatch = true;
         __instance.sprite = value;
     }

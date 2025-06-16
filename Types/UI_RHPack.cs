@@ -17,9 +17,11 @@ public class UI_RHPack : MonoBehaviour
 
     public Button? Up; //  Up/Arrow/
     public Button? Down; //  Down/Arrow/
-    public Toggle? EnableToggle; //  Disable/Toggle/
+    public Button? EnableToggle; //  Disable/
+    public Image? EnableOn; //  Disable/Toggle/ToggleImg
+    public Image? EnableOff; //  Disable/Toggle/OffImg
 
-    private TexturePack _pack;
+    private TexturePack _pack = null!;
     
     private T? FindAt<T>(string path) where T : Component
     {
@@ -48,11 +50,13 @@ public class UI_RHPack : MonoBehaviour
         
         Up = FindAt<Button>("Up/Arrow");
         Down = FindAt<Button>("Down/Arrow");
-        EnableToggle = FindAt<Toggle>("Disable/Toggle");
+        EnableToggle = FindAt<Button>("Disable");
+        EnableOff = FindAt<Image>("Disable/Toggle/OffImg");
+        EnableOn = FindAt<Image>("Disable/Toggle/ToggleImg");
     }
 
     // Loads the pack's values into the ui, this should only be called once.
-    public void Load(TexturePack pack, bool enabled = true)
+    public void Load(TexturePack pack, bool active = true)
     {
         _pack = pack;
 
@@ -63,38 +67,35 @@ public class UI_RHPack : MonoBehaviour
         Description!.text = _pack.desc;
         Guid!.text = _pack.guid;
 
-        EnableToggle!.isOn = enabled;
+        EnableOff!.enabled = !active;
+        EnableOn!.enabled = active;
 
         if (pack.steamid > 0)
         {
-            SteamAuthor.onClick.AddListener(() =>
+            SteamAuthor?.onClick.AddListener(() =>
             {
                 SteamFriends.OpenUserOverlay(pack.steamid, "steamid");
             });
         }
         else
-        {
-            SteamAuthor.gameObject.SetActive(false);
-        }
+            SteamAuthor?.gameObject.SetActive(false);
         
         Up!.onClick.AddListener(() =>
         {
             RHCommands.MovePack(_pack, true);
-            UI_RHPacksList.Instance.BuildList();
+            UI_RHPacksList.Instance?.BuildList();
             ResourcePacksManager.ReloadPacks_Internal();
         });
         Down!.onClick.AddListener(() =>
         {
             RHCommands.MovePack(_pack, false);
-            UI_RHPacksList.Instance.BuildList();
+            UI_RHPacksList.Instance?.BuildList();
             ResourcePacksManager.ReloadPacks_Internal();
         });
-        EnableToggle!.onValueChanged.AddListener((newVal) =>
+        EnableToggle!.onClick.AddListener(() =>
         {
-            _pack.IsActive = newVal;
-            RHCommands.MovePack(_pack, false);
-            RHCommands.MovePack(_pack, true);
-            UI_RHPacksList.Instance.BuildList();
+            _pack.IsActive = !_pack.IsActive;
+            UI_RHPacksList.Instance?.BuildList();
             ResourcePacksManager.ReloadPacks_Internal();
         });
     }
