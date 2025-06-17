@@ -18,6 +18,7 @@ Additionally, ResourcefulHands comes with built in commands to use if you prefer
   - listpacks -> Lists every pack.
   - enablepack -> Enables a pack's contents.
   - disablepack -> Disables a pack's contents.
+  - rhtoggledebug -> toggles a menu at the top left that shows playing sounds
 
 ## Feature comparison
 | Feature                        | Bundle editing | ResourcefulHands  |
