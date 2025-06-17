@@ -1,5 +1,9 @@
 # ![ResourcefulHands [W.I.P]](https://file.garden/Z9BrE5QDFXkNPYaw/rhlogobanner_trimmed_big.png "ResourcefulHands [W.I.P]")
 
+#### __Contributors:__
+ - triggered0idiot \[creator\]
+ - Collin8000
+
 ***ResourcefulHands is resource pack mod for White Knuckle*** that is designed to be a user friendly alterative to editing game files. ResourcefulHands works both on the current early access build and the demo as of writing.
 
 ## UI
@@ -39,7 +43,7 @@ Additionally, ResourcefulHands comes with built in commands to use if you prefer
 | Supports game updates          | ~ |
 | Cross compatable with demo     | ~ |
 | Hot reloading                  | ~ |
-| Efficient reloads              | ❌ |
+| Efficient reloads              | ✔️ |
 | Pack management UI             | ~ |
-| Pack debugging tools           | ❌ |
+| Pack debugging tools           | ~ |
 ###### ✔️ = feature is fully functional as of writing<br>❌ = feature doesn't exist as of writing<br>~ = feature somewhat works but needs to be implemented/tested fully
