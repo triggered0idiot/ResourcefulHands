@@ -81,10 +81,8 @@ public static class DEBUG_AudioSourcePatches
         if(!DebugTools.isOn) return;
         if (value == null) return;
         
-        if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
-        {
+        if (__instance.isPlaying || (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f))
             DebugTools.QueueSound(value);
-        }
     }
     
     [HarmonyPatch(methodName:"get_clip")]
@@ -94,10 +92,8 @@ public static class DEBUG_AudioSourcePatches
         if(!DebugTools.isOn) return;
         if (__result == null) return;
         
-        if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f)
-        {
+        if (__instance.isPlaying || (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f))
             DebugTools.QueueSound(__result);
-        }
     }
     
     [HarmonyPatch(methodName:"Play", argumentTypes: [typeof(double)])]

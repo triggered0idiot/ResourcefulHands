@@ -84,19 +84,40 @@ public class UI_RHPack : MonoBehaviour
         {
             RHCommands.MovePack(_pack, true);
             UI_RHPacksList.Instance?.BuildList();
-            ResourcePacksManager.ReloadPacks_Internal();
+            
+            if (RHConfig.LazyManip?.Value ?? false)
+            {
+                Plugin.RefreshTextures();
+                Plugin.RefreshSounds();
+            }
+            else
+                ResourcePacksManager.ReloadPacks_Internal();
         });
         Down!.onClick.AddListener(() =>
         {
             RHCommands.MovePack(_pack, false);
             UI_RHPacksList.Instance?.BuildList();
-            ResourcePacksManager.ReloadPacks_Internal();
+            
+            if (RHConfig.LazyManip?.Value ?? false)
+            {
+                Plugin.RefreshTextures();
+                Plugin.RefreshSounds();
+            }
+            else
+                ResourcePacksManager.ReloadPacks_Internal();
         });
         EnableToggle!.onClick.AddListener(() =>
         {
             _pack.IsActive = !_pack.IsActive;
             UI_RHPacksList.Instance?.BuildList();
-            ResourcePacksManager.ReloadPacks_Internal();
+            
+            if (RHConfig.LazyManip?.Value ?? false)
+            {
+                Plugin.RefreshTextures();
+                Plugin.RefreshSounds();
+            }
+            else
+                ResourcePacksManager.ReloadPacks_Internal();
         });
     }
 }
