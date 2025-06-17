@@ -8,7 +8,7 @@
 
 ## UI
 ResourcefulHands can handle several user made packs at the same time with order re-arranging.
-# ![ResourcefulHands Packs UI](https://file.garden/Z9BrE5QDFXkNPYaw/rh_showcase2.png "ResourcefulHands Packs UI")
+# ![ResourcefulHands Packs UI](https://file.garden/Z9BrE5QDFXkNPYaw/rh_showcase3.png "ResourcefulHands Packs UI")
 
 ## Commands
 Additionally, ResourcefulHands comes with built in commands to use if you prefer:
