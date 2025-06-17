@@ -155,6 +155,7 @@ public static class AudioSourcePatches
             if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f && !__instance.isPlaying)
             {
                 dontPatch = true;
+                if(!__instance.enabled) return;
                 __instance.Play();
             }
         }
@@ -178,6 +179,7 @@ public static class AudioSourcePatches
             if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f && !__instance.isPlaying)
             {
                 dontPatch = true;
+                if(!__instance.enabled) return;
                 __instance.Play();
             }
         }

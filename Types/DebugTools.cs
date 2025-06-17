@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace ResourcefulHands;
 
@@ -14,6 +15,7 @@ public class DebugTools : MonoBehaviour
 
     private static List<AudioClip> _playingClips = new List<AudioClip>();
     private GUIStyle _style = GUIStyle.none;
+    private bool _enableNextFrame = false;
 
     internal static void Create()
     {
@@ -52,6 +54,19 @@ public class DebugTools : MonoBehaviour
             fontStyle = FontStyle.Bold,
             normal = new GUIStyleState { textColor = Color.white }
         };
+
+        SceneManager.sceneUnloaded += arg0 =>
+        {
+            _enableNextFrame |= isOn;
+            isOn = false;
+        };
+        SceneManager.sceneLoaded += (arg0, mode) =>
+        {
+            if (mode != LoadSceneMode.Single) return;
+            _playingClips.Clear();
+            _enableNextFrame |= isOn;
+            isOn = false;
+        };
     }
 
     public void OnGUI()
@@ -66,6 +81,15 @@ public class DebugTools : MonoBehaviour
             GUILayout.Label(clip.name, _style);
         
         GUI.contentColor = prevColor;
+    }
+
+    public void LateUpdate()
+    {
+        if(_enableNextFrame)
+        {
+            isOn = true;
+            _enableNextFrame = false;
+        }
     }
 }
 
