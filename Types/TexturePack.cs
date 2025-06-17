@@ -11,6 +11,8 @@ using Object = UnityEngine.Object;
 namespace ResourcefulHands;
 
 /*
+
+    // version 1 spec
     {
         "name":"generated-game-assets",
         "desc":"Every game asset",
@@ -20,8 +22,27 @@ namespace ResourcefulHands;
         "hidden-from-list":true,
         "only-in-full-game":false,
         "format-version":1
-    }                   
- */
+    }
+    
+    // version 2 spec
+    {
+        "name":"generated-game-assets",
+        "desc":"Every game asset",
+        "author":"Dark Machine Games",
+        "guid":"generated-game-assets",
+        "steamid":0,
+        "hidden-from-list":true,
+        "only-in-full-game":false,
+        
+        // new feature (optional extra)
+        "textures-folder":"Textures",
+        "sounds-folder":"Sounds",
+        "icon-file":"pack.png",
+        
+        "format-version":2
+    }
+*/
+
 [System.Serializable]
 public class TexturePack
 {
@@ -37,12 +58,20 @@ public class TexturePack
     public bool hiddenFromList = false;
     [JsonProperty(propertyName:"only-in-full-game", NullValueHandling=NullValueHandling.Ignore)]
     public bool onlyInFullGame = false;
+
+    [JsonProperty(propertyName:"textures-folder", NullValueHandling=NullValueHandling.Ignore)]
+    public string relativeTexturesPath = "Textures";
+    [JsonProperty(propertyName:"sounds-folder", NullValueHandling=NullValueHandling.Ignore)]
+    public string relativeSoundsPath = "Sounds";
+    [JsonProperty(propertyName:"icon-file", NullValueHandling=NullValueHandling.Ignore)]
+    public string relativeIconPath = "pack.png";
+    
     [JsonProperty(propertyName:"format-version", NullValueHandling=NullValueHandling.Ignore)]
     public int texturePackVersion = CurrentFormatVersion;
     
     [JsonIgnore]
     [System.NonSerialized]
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2; // TODO: convert/parse/handle different versions with custom logic? (would be better for when/if some non backwards compatible format version comes out)
     [JsonIgnore]
     [System.NonSerialized]
     public bool IsActive = true;
@@ -66,12 +95,20 @@ public class TexturePack
     {
         "name":"generated-game-assets",
         "desc":"Every game asset",
+        
         "author":"Dark Machine Games",
-        "guid":"generated-game-assets",
         "steamid":0,
+        
+        "guid":"generated-game-assets",
+        
         "hidden-from-list":true,
         "only-in-full-game":false,
-        "format-version":1
+        
+        "textures-folder":"Textures",
+        "sounds-folder":"Sounds",
+        "icon-file":"pack.png",
+        
+        "format-version":2
     }                                                           
     """;
     
@@ -120,10 +157,10 @@ public class TexturePack
         if(pack.texturePackVersion != CurrentFormatVersion)
             RHLog.Warning($"Texture pack at {path} is format version {pack.texturePackVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
         
-        string iconPath = Path.Combine(path, "pack.png");
+        string iconPath = Path.Combine(path, pack.relativeIconPath);
         if(!File.Exists(iconPath))
         {
-            RHLog.Warning($"{path} doesn't have an pack.png!");
+            RHLog.Warning($"{path} doesn't have an pack.png! (icon path: '{pack.relativeIconPath}')");
             pack.Icon = Plugin.IconGray ?? new Texture2D(2,2);
         }
         else
@@ -157,8 +194,9 @@ public class TexturePack
         }
             
         RHLog.Info($"Texture pack at {path} is valid, loading assets...");
-        string texturesFolder = Path.Combine(path, "Textures");
-        string soundsFolder = Path.Combine(path, "Sounds");
+        string texturesFolder = Path.Combine(path, pack.relativeTexturesPath);
+        string soundsFolder = Path.Combine(path, pack.relativeSoundsPath);
+        RHLog.Debug($"Texture pack at {path} uses '{texturesFolder}' and '{soundsFolder}'");
         
         string[] textureFiles = [];
         string[] soundFiles = [];
