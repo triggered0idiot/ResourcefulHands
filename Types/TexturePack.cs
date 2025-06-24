@@ -2,10 +2,12 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using HarmonyLib;
 using Newtonsoft.Json;
 using UnityEngine;
+using UnityEngine.Networking;
 using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
@@ -83,7 +85,7 @@ public class TexturePack
     public Dictionary<string, AudioClip> Sounds = [];
     [JsonIgnore]
     [System.NonSerialized]
-    protected List<StreamedAudioClip> RawSounds = [];
+    protected List<AudioClip> RawSounds = [];
 
     [JsonIgnore]
     public Texture2D Icon { get; private set; } = null!;
@@ -125,7 +127,7 @@ public class TexturePack
         return clip;
     }
     
-    public static TexturePack? Load(string path, bool force = false)
+    public static async Task<TexturePack?> Load(string path, bool force = false)
     {
         string jsonPath = Path.Combine(path, "info.json");
         if(!File.Exists(jsonPath))
@@ -133,7 +135,7 @@ public class TexturePack
             RHLog.Warning($"{path} doesn't have an info.json!");
             return null;
         }
-        TexturePack? pack = JsonConvert.DeserializeObject<TexturePack>(File.ReadAllText(jsonPath));
+        TexturePack? pack = JsonConvert.DeserializeObject<TexturePack>(await File.ReadAllTextAsync(jsonPath));
         if (pack == null)
         {
             RHLog.Warning($"{jsonPath} isn't a valid TexturePack json!");
@@ -165,7 +167,7 @@ public class TexturePack
         }
         else
         {
-            byte[] fileBytes = File.ReadAllBytes(iconPath);
+            byte[] fileBytes = await File.ReadAllBytesAsync(iconPath);
             Texture2D texture = new Texture2D(2, 2);
             if (!texture.LoadImage(fileBytes, false))
             {
@@ -189,7 +191,7 @@ public class TexturePack
         if (pack.guid != prevGuid)
         {
             string newJson = JsonConvert.SerializeObject(pack);
-            File.WriteAllText(jsonPath, newJson);
+            await File.WriteAllTextAsync(jsonPath, newJson);
             RHLog.Warning($"Corrected {pack.name}'s guid: {prevGuid} -> {pack.guid}");
         }
             
@@ -218,7 +220,7 @@ public class TexturePack
                 RHLog.Warning($"{extension} isn't supported! Only png and jpg files are supported! [at: {textureFile}]");
                 continue;
             }
-            byte[] fileBytes = File.ReadAllBytes(textureFile);
+            byte[] fileBytes = await File.ReadAllBytesAsync(textureFile);
             Texture2D texture = new Texture2D(2, 2);
             if (!texture.LoadImage(fileBytes, false))
             {
@@ -236,6 +238,8 @@ public class TexturePack
         i = 0;
         // channels, sample rate, samples, filename
         ConcurrentStack<Tuple<int, int, float[], string>> loadedSounds = [];
+        // Leaving this here in case of something I missed, and you don't want to look through git lmao
+        /*
         List<Task> soundTasks = [];
         foreach (var soundFile in soundFiles)
         {
@@ -250,12 +254,93 @@ public class TexturePack
             var streamedClip = new StreamedAudioClip(soundFile);
             pack.RawSounds.Add(streamedClip);
             var clip = streamedClip.clip;
-        
+
             clip.name = Path.GetFileNameWithoutExtension(soundFile);
             if (!pack.Sounds.TryAdd(clip.name, clip))
                 RHLog.Error($"Failed to add {soundFile} because texture of that name already exists in the same pack!");
-        }
+         }
+        */
+        
+        // Magic happens here :D
+        await LoadAllSounds(soundFiles, pack);
         
         return pack;
+    }
+
+    private static async Task LoadAllSounds(IEnumerable<string> soundFiles, TexturePack pack)
+    {
+        var soundTasks = new List<Task>();
+        var files = soundFiles.ToList();
+        
+        var i = 0;
+        var soundCount = files.ToList().Count;
+
+        foreach (var soundFile in files)
+        {
+            RHLog.Info($"Queuing sounds ({++i}/{soundCount})");
+            
+            // Add all sounds to a task list
+            soundTasks.Add(LoadSound(soundFile, pack));
+        }
+        
+        await Task.WhenAll(soundTasks);
+        
+        RHLog.Info($"Loaded {soundTasks.Count} sounds for {pack.guid}!");
+    }
+    
+    private static async Task LoadSound(string filepath, TexturePack pack)
+    {
+        var clipName = Path.GetFileNameWithoutExtension(filepath);
+        var type = Path.GetExtension(filepath)[1..]; // This also returns a dot for some reason
+        
+        AudioClip? audioClip = null;
+        var audioType = type.ToLower() switch
+        {
+            "wav" => AudioType.WAV,
+            "ogg" => AudioType.OGGVORBIS,
+            "mp3" => AudioType.MPEG,
+            "aiff" => AudioType.AIFF,
+            "wma" => AudioType.MPEG,
+            "acc" => AudioType.ACC,
+            _ => AudioType.UNKNOWN
+        };
+
+        if (audioType == AudioType.UNKNOWN)
+        {
+            RHLog.Error($"Failed to load sound file, '{type}' is not a supported format [at: {filepath}]");
+            return;
+        }
+
+        var uwr = new UnityWebRequest(filepath, UnityWebRequest.kHttpVerbGET)
+        {
+            downloadHandler = new DownloadHandlerAudioClip(filepath, audioType)
+        };
+        var dh = (DownloadHandlerAudioClip)uwr.downloadHandler;
+        dh.streamAudio = false;
+        dh.compressed = true;
+        
+        uwr.SendWebRequest();
+
+        try
+        {
+            while (!uwr.isDone) await Task.Delay(5);
+
+            if (uwr.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError)
+                RHLog.Error($"Error while loading {clipName} [at: {filepath}]");
+            else
+                audioClip = dh.audioClip;
+        }
+        catch
+        {
+            RHLog.Error($"Error while loading {clipName} [at: {filepath}]");
+        }
+
+        if (audioClip is null) return;
+        
+        pack.RawSounds.Add(audioClip);
+        
+        audioClip.name = clipName;
+        if (!pack.Sounds.TryAdd(clipName, audioClip))
+            RHLog.Error($"Failed to add {clipName} because sound of that name already exists in the same pack! [at: {filepath}]");
     }
 }

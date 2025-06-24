@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using Sirenix.Utilities;
@@ -137,76 +138,63 @@ public static class AudioSourcePatches
 
     private static bool dontPatch = false; // prevents loopbacks
     
-    [HarmonyPatch(methodName:"set_clip")]
-    [HarmonyPostfix]
-    private static void Setter_Postfix(AudioSource __instance, ref AudioClip value)
+    // Setters and Getters for clip are not needed,
+    // Patching the play functions is the better and 100% working way
+    
+    
+    
+    // Patch parameterless Play()
+    [HarmonyPatch(nameof(AudioSource.Play), [])]
+    [HarmonyPrefix]
+    private static void Play_NoArgs_Postfix(AudioSource __instance)
+        => SwapClip(__instance);
+
+    // Patch Play(double delay)
+    [HarmonyPatch(nameof(AudioSource.Play), new[] { typeof(double) })]
+    [HarmonyPrefix]
+    private static void Play_DelayDouble_Postfix(AudioSource __instance)
+        => SwapClip(__instance);
+
+    // Patch Play(ulong delaySamples)
+    [HarmonyPatch(nameof(AudioSource.Play), new[] { typeof(ulong) })]
+    [HarmonyPrefix]
+    private static void Play_DelayUlong_Postfix(AudioSource __instance)
+        => SwapClip(__instance);
+    
+    // Patch PlayOneShot(AudioClip)
+    [HarmonyPatch(typeof(AudioSource), nameof(AudioSource.PlayOneShot), typeof(AudioClip))]
+    [HarmonyPrefix]
+    private static void PlayOneShot_ClipOnly_Postfix(AudioSource __instance, ref AudioClip __0)
     {
-        if(dontPatch)
-        { dontPatch = false; return; }
-        
-        if (value == null) return;
-        
-        var newClip = ResourcePacksManager.GetSoundFromPacks(value.name);
-        if (newClip != null)
-        {
-            dontPatch = true;
-            __instance.clip = newClip;
-            value = newClip;
-            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f && !__instance.isPlaying)
-            {
-                dontPatch = true;
-                if(!__instance.enabled) return;
-                __instance.Play();
-            }
-        }
+        var clip = ResourcePacksManager.GetSoundFromPacks(__instance.clip.name);
+        if (clip is not null)
+            __0 = clip;
+    }
+
+    // Patch PlayOneShot(AudioClip, float volumeScale)
+    [HarmonyPatch(typeof(AudioSource), nameof(AudioSource.PlayOneShot), typeof(AudioClip), typeof(float))]
+    [HarmonyPrefix]
+    private static void PlayOneShot_ClipAndVolume_Postfix(AudioSource __instance, ref AudioClip __0)
+    {
+        var clip = ResourcePacksManager.GetSoundFromPacks(__instance.clip.name);
+        if (clip is not null)
+            __0 = clip;
     }
     
-    [HarmonyPatch(methodName:"get_clip")]
-    [HarmonyPostfix]
-    private static void Getter_Postfix(AudioSource __instance, ref AudioClip __result)
+    // Shared logic
+    private static void SwapClip(AudioSource src)
     {
         if(dontPatch)
         { dontPatch = false; return; }
-
-        if (__result == null) return;
         
-        var newClip = ResourcePacksManager.GetSoundFromPacks(__result.name);
-        if (newClip != null)
-        {
-            dontPatch = true;
-            __instance.clip = newClip;
-            __result = newClip;
-            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f && !__instance.isPlaying)
-            {
-                dontPatch = true;
-                if(!__instance.enabled) return;
-                __instance.Play();
-            }
-        }
-    }
+        if (src?.clip is null) 
+            return;
 
-    [HarmonyPatch(methodName:"Play", argumentTypes: [typeof(double)])]
-    [HarmonyPostfix]
-    private static void Play_Prefix(AudioSource __instance, double delay)
-    {
-        if(dontPatch)
-        { dontPatch = false; return; }
+        var clip = ResourcePacksManager.GetSoundFromPacks(src.clip.name);
+        if (clip is null) 
+            return;
 
-        if(__instance.clip == null) return;
-        
-        __instance.clip = __instance.clip;
-    }
-    
-    [HarmonyPatch(methodName:"PlayHelper", argumentTypes: [typeof(AudioSource), typeof(ulong)])]
-    [HarmonyPostfix]
-    private static void PlayHelper_Prefix(AudioSource source, ulong delay)
-    {
-        if(dontPatch)
-        { dontPatch = false; return; }
-
-        if(source.clip == null) return;
-        
-        source.clip = source.clip;
+        src.clip = clip;
     }
 }
 
