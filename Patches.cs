@@ -160,18 +160,6 @@ public static class AudioSourcePatches
     [HarmonyPrefix]
     private static void Play_DelayUlong_Postfix(AudioSource __instance)
         => SwapClip(__instance);
-
-    [HarmonyPatch(methodName:"Play", argumentTypes: [typeof(double)])]
-    [HarmonyPostfix]
-    private static void Play_Prefix(AudioSource __instance, double delay)
-    {
-        if(dontPatch)
-        { dontPatch = false; return; }
-
-        if(__instance.clip == null) return;
-        
-        __instance.clip = __instance.clip;
-    }
     
     // Patch PlayOneShot(AudioClip)
     [HarmonyPatch(typeof(AudioSource), nameof(AudioSource.PlayOneShot), typeof(AudioClip))]
