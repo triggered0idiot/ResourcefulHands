@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading.Tasks;
 using BepInEx;
 using HarmonyLib;
 using Newtonsoft.Json;
@@ -122,12 +123,13 @@ public static class ResourcePacksManager
     // exposed api ig
     public static void ReloadPacks()
     {
-        ResourcePacksManager.ReloadPacks_Internal();
+        // TODO: Make this also async to speed up reloading, and not hang the game
+        ReloadPacks_Internal();
     }
     
-    internal static void ReloadPacks_Internal()
+    internal static async void ReloadPacks_Internal()
     {
-        ResourcePacksManager.HasPacksChanged = false;
+        HasPacksChanged = false;
         if (LoadedPacks.Count != 0)
         {
             SavePackOrder();
@@ -176,7 +178,7 @@ public static class ResourcePacksManager
             try
             {
                 RHLog.Info($"Loading texture pack: {path}");
-                TexturePack? pack = TexturePack.Load(path);
+                TexturePack? pack = await TexturePack.Load(path);
                 if (pack == null)
                 {
                     RHLog.Warning($"Failed to load pack at {path}!");
