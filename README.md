@@ -3,6 +3,7 @@
 #### __Contributors:__
  - triggered0idiot \[creator\]
  - Collin8000
+ - galfar-coder
 
 ***ResourcefulHands is resource pack mod for White Knuckle*** that is designed to be a user friendly alterative to editing game files. ResourcefulHands works both on the current early access build and the demo as of writing.
 
@@ -19,6 +20,39 @@ Additionally, ResourcefulHands comes with built in commands to use if you prefer
   - enablepack -> Enables a pack's contents.
   - disablepack -> Disables a pack's contents.
   - rhtoggledebug -> toggles a menu at the top left that shows playing sounds
+
+## Resource Pack Structure
+--> Textures/<br>
+any .png or .jpg file with the same name as an ingame texture will replace it<br>
+currently the custom texture should try to be in the same format as the original texture or else it may not work correctly<br>
+
+--> Sounds/<br>
+any .mp3, .wav or .ogg file with the same name as an ingame sound will replace it<br>
+currently the custom sound should try to be in the same format as the original sound or else it may not work correctly<br>
+
+--> pack.png<br>
+pack icon for the new settings menu<br>
+--> info.json<br>
+tells the mod information about your pack<br>
+
+```json
+{
+    "name":"your pack name here",
+    "desc":"your description here",
+
+    "author":"your name here",
+    "steamid":0,
+
+    "guid":"some.unqiue.text.dont.change.between.versions",
+    "only-in-full-game":false,
+    
+    "textures-folder":"Textures",
+    "sounds-folder":"Sounds",
+    "icon-file":"pack.png",
+    
+    "format-version":2
+}
+```
 
 ## Feature comparison
 | Feature                        | Bundle editing | ResourcefulHands  |

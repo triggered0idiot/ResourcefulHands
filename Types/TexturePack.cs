@@ -13,6 +13,10 @@ using Object = UnityEngine.Object;
 namespace ResourcefulHands;
 
 /*
+    // incase whoever is reading this doesn't understand the point of the whole format-version thing
+    // its just used to show which json files are compatible with what mod versions
+    // i.e features from version 2 will only work on 0.9.60 and not 0.9.51
+    // ideally version 1 will work on any version of rh unless the core formatting is changed for some reason
 
     // version 1 spec
     {
@@ -73,7 +77,7 @@ public class TexturePack
     
     [JsonIgnore]
     [System.NonSerialized]
-    public const int CurrentFormatVersion = 2; // TODO: convert/parse/handle different versions with custom logic? (would be better for when/if some non backwards compatible format version comes out)
+    public const int CurrentFormatVersion = 2;
     [JsonIgnore]
     [System.NonSerialized]
     public bool IsActive = true;
@@ -209,7 +213,6 @@ public class TexturePack
             soundFiles = Directory.GetFiles(soundsFolder, "*.*", SearchOption.AllDirectories);
 
         int textureCount = textureFiles.Length;
-        int soundCount = soundFiles.Length;
         int i = 0;
         foreach (string textureFile in textureFiles)
         {
@@ -235,32 +238,6 @@ public class TexturePack
                 RHLog.Error($"Failed to add {textureFile} because texture of that name already exists in the same pack!");
         }
 
-        i = 0;
-        // channels, sample rate, samples, filename
-        ConcurrentStack<Tuple<int, int, float[], string>> loadedSounds = [];
-        // Leaving this here in case of something I missed, and you don't want to look through git lmao
-        /*
-        List<Task> soundTasks = [];
-        foreach (var soundFile in soundFiles)
-        {
-            RHLog.Info($"Queuing sounds ({i++}/{soundCount})");
-            string extension = Path.GetExtension(soundFile).ToLower();
-            if (extension.Contains("ogg"))
-            {
-                RHLog.Warning($"{extension} isn't supported! Only mp3, wav, aiff, wma, acc files are supported! [at: {soundFile}]");
-                continue;
-            }
-
-            var streamedClip = new StreamedAudioClip(soundFile);
-            pack.RawSounds.Add(streamedClip);
-            var clip = streamedClip.clip;
-
-            clip.name = Path.GetFileNameWithoutExtension(soundFile);
-            if (!pack.Sounds.TryAdd(clip.name, clip))
-                RHLog.Error($"Failed to add {soundFile} because texture of that name already exists in the same pack!");
-         }
-        */
-        
         // Magic happens here :D
         await LoadAllSounds(soundFiles, pack);
         
