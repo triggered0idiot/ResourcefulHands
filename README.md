@@ -4,6 +4,7 @@
  - triggered0idiot \[creator\]
  - Collin8000
  - galfar-coder
+ - notTamion
 
 ***ResourcefulHands is resource pack mod for White Knuckle*** that is designed to be a user friendly alterative to editing game files. ResourcefulHands works both on the current early access build and the demo as of writing.
 
