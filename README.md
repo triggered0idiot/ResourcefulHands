@@ -25,11 +25,13 @@ Additionally, ResourcefulHands comes with built in commands to use if you prefer
 --> Textures/<br>
 any .png or .jpg file with the same name as an ingame texture will replace it<br>
 currently the custom texture should try to be in the same format as the original texture or else it may not work correctly<br>
+<sub><sup> *currently the mass has special properties, to edit its texture use DeathFloor_02 for the mass and _CORRUPTTEXTURE for the effect it does* </sup></sub><br>
 
 --> Sounds/<br>
 any .mp3, .wav or .ogg file with the same name as an ingame sound will replace it<br>
 currently the custom sound should try to be in the same format as the original sound or else it may not work correctly<br>
 
+<br>
 --> pack.png<br>
 pack icon for the new settings menu<br>
 --> info.json<br>
