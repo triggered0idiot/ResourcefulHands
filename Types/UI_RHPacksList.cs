@@ -37,6 +37,14 @@ public class UI_RHPacksList : MonoBehaviour
         CoroutineDispatcher.Dispatch(EnableCoroutine());
     }
 
+    public void OnDisable() {
+        if (ResourcePacksManager.LoadedPacks.Count != 0)
+        {
+            ResourcePacksManager.SavePackOrder();
+            ResourcePacksManager.SaveDisabledPacks();
+        }
+    }
+
     void ClearList()
     {
         if (container == null || packTemplate == null) return;
