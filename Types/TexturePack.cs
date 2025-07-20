@@ -92,6 +92,8 @@ public class TexturePack
     protected List<AudioClip> RawSounds = [];
 
     [JsonIgnore]
+    public string PackPath { private set; get; } = string.Empty;
+    [JsonIgnore]
     public Texture2D Icon { get; private set; } = null!;
     
     [JsonIgnore]
@@ -146,6 +148,8 @@ public class TexturePack
             RHLog.Info("Example: " + DefaultJson);
             return null;
         }
+        pack.PackPath = path;
+        
         if (!force)
         {
             if (pack.hiddenFromList)
@@ -197,6 +201,13 @@ public class TexturePack
             string newJson = JsonConvert.SerializeObject(pack);
             await File.WriteAllTextAsync(jsonPath, newJson);
             RHLog.Warning($"Corrected {pack.name}'s guid: {prevGuid} -> {pack.guid}");
+        }
+
+        var conflictingPack = ResourcePacksManager.LoadedPacks.FirstOrDefault(p => p.guid == pack.guid);
+        if (conflictingPack != null)
+        {
+            RHLog.Error($"Resource pack's guid ({pack.guid}) at '{path}' is the same as the resource pack's guid at '{conflictingPack.PackPath}" );
+            return null;
         }
             
         RHLog.Info($"Texture pack at {path} is valid, loading assets...");
