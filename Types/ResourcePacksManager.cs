@@ -167,8 +167,9 @@ public static class ResourcePacksManager
         RHLog.Info("Loading texture packs...");
         List<string> paths = new();
         paths.AddRange(Directory.GetDirectories(Plugin.ConfigFolder, "*", SearchOption.TopDirectoryOnly));
-        // incase some people wanna upload packs to thunderstore... for some reason
-        paths.AddRange(Directory.GetDirectories(Paths.PluginPath, "*", SearchOption.TopDirectoryOnly));
+        paths.AddRange(Directory.GetDirectories(Paths.PluginPath, "*", SearchOption.AllDirectories)); // check sub dirs for plugins
+
+        int failedPacks = 0;
         foreach (string path in paths)
         {
             // not a pack without info.json
@@ -182,6 +183,7 @@ public static class ResourcePacksManager
                 if (pack == null)
                 {
                     RHLog.Warning($"Failed to load pack at {path}!");
+                    failedPacks++;
                     continue;
                 }
 
@@ -190,6 +192,7 @@ public static class ResourcePacksManager
             }
             catch (Exception e)
             {
+                failedPacks++;
                 RHLog.Info($"Failed to load!");
                 RHLog.Error(e);
             }
@@ -200,7 +203,9 @@ public static class ResourcePacksManager
         RHLog.Info("Disabling packs that should be disabled...");
         LoadDisabledPacks();
 
-        RHLog.Info($"Loaded {LoadedPacks.Count}/{paths.Count} texture packs");
+        RHLog.Info($"Loaded {LoadedPacks.Count}/{LoadedPacks.Count + failedPacks} texture packs");
+        if (failedPacks > 0)
+            RHLog.Warning($"{failedPacks} packs failed to load!");
 
         // attempt to refresh previously loaded stuff
         Plugin.RefreshTextures();

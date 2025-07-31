@@ -101,6 +101,23 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             }
         }
 
+        // TODO : remove this ass fix
+        if (SceneManager.GetActiveScene().name.ToLower().Contains("menu"))
+        {
+            GameObject music = GameObject.Find("WKTheme");
+            if (music && music.TryGetComponent<AudioSource>(out var player))
+            {
+                AudioClip? clip = ResourcePacksManager.GetSoundFromPacks("WKTheme");
+                if (clip != null)
+                {
+                    bool wasPlaying = player.isPlaying || player.playOnAwake;
+                    player.clip = clip;
+                    if(wasPlaying)
+                        player.Play();
+                }
+            }
+        }
+
         foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
             spriteR.sprite = spriteR.sprite;
     }
