@@ -120,15 +120,26 @@ public static class ResourcePacksManager
         }
     }
 
-    // exposed api ig
+
+    private static bool isReloading = false;
+    
+    // Reloads every pack
     public static void ReloadPacks()
     {
-        // TODO: Make this also async to speed up reloading, and not hang the game
-        ReloadPacks_Internal();
+        if (isReloading) return;
+
+        RHLog.Debug("Dispatching pack reloader task...");
+        Task.Run(async () =>
+        {
+            await ReloadPacks_Internal();
+        });
     }
     
-    internal static async void ReloadPacks_Internal()
+    internal static async Task ReloadPacks_Internal()
     {
+        if (isReloading) return;
+        isReloading = true;
+        
         HasPacksChanged = false;
         if (LoadedPacks.Count != 0)
         {
@@ -214,5 +225,7 @@ public static class ResourcePacksManager
         // just incase
         if(UI_RHPacksList.Instance != null)
             UI_RHPacksList.Instance?.BuildList();
+
+        isReloading = false;
     }
 }
