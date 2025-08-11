@@ -91,7 +91,7 @@ public class UI_RHPack : MonoBehaviour
                 Plugin.RefreshSounds();
             }
             else
-                ResourcePacksManager.ReloadPacks_Internal();
+                ResourcePacksManager.ReloadPacks();
         });
         Down!.onClick.AddListener(() =>
         {
@@ -104,7 +104,7 @@ public class UI_RHPack : MonoBehaviour
                 Plugin.RefreshSounds();
             }
             else
-                ResourcePacksManager.ReloadPacks_Internal();
+                ResourcePacksManager.ReloadPacks();
         });
         EnableToggle!.onClick.AddListener(() =>
         {
@@ -117,7 +117,7 @@ public class UI_RHPack : MonoBehaviour
                 Plugin.RefreshSounds();
             }
             else
-                ResourcePacksManager.ReloadPacks_Internal();
+                ResourcePacksManager.ReloadPacks();
         });
     }
 }

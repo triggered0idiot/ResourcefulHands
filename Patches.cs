@@ -272,6 +272,9 @@ public static class RendererPatches
     [HarmonyPostfix]
     private static void Constructor_Postfix(Renderer __instance)
     {
+        if (__instance == null ||  __instance.sharedMaterials == null)
+            return;
+        
 #if DEBUG
         RHLog.Info($"{__instance?.name} (Renderer) was accessed [ctor]");
 #endif

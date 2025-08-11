@@ -114,7 +114,7 @@ public static class RHCommands
         MovePack(pack, isUp);
         
         RHLog.Player.Info("Reloading packs...");
-        ResourcePacksManager.ReloadPacks_Internal();
+        ResourcePacksManager.ReloadPacks();
         RHLog.Player.Info($"Moved {pack.name} {'{'}{pack.guid}{'}'} {(isUp ? "up" : "down")} successfully!");
     }
     
@@ -129,7 +129,7 @@ public static class RHCommands
     
     private static void ReloadPacks(string[] args)
     {
-        ResourcePacksManager.ReloadPacks_Internal();
+        ResourcePacksManager.ReloadPacks();
         RHLog.Player.Info("Resource packs reloaded successfully!");
     }
 
@@ -173,7 +173,7 @@ public static class RHCommands
         
         pack.IsActive = false;
         RHLog.Player.Info("Reloading packs...");
-        ResourcePacksManager.ReloadPacks_Internal();
+        ResourcePacksManager.ReloadPacks();
         RHLog.Player.Info($"Disabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
     }
     private static void EnablePack(string[] args)
@@ -188,7 +188,7 @@ public static class RHCommands
 
         pack.IsActive = true;
         RHLog.Player.Info("Reloading packs...");
-        ResourcePacksManager.ReloadPacks_Internal();
+        ResourcePacksManager.ReloadPacks();
         RHLog.Player.Info($"Enabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
     }
 

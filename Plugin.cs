@@ -101,23 +101,6 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             }
         }
 
-        // TODO : remove this ass fix
-        if (SceneManager.GetActiveScene().name.ToLower().Contains("menu"))
-        {
-            GameObject music = GameObject.Find("WKTheme");
-            if (music && music.TryGetComponent<AudioSource>(out var player))
-            {
-                AudioClip? clip = ResourcePacksManager.GetSoundFromPacks("WKTheme");
-                if (clip != null)
-                {
-                    bool wasPlaying = player.isPlaying || player.playOnAwake;
-                    player.clip = clip;
-                    if(wasPlaying)
-                        player.Play();
-                }
-            }
-        }
-
         foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
             spriteR.sprite = spriteR.sprite;
     }
@@ -145,6 +128,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         }
         try
         {
+            RHLog.Info("so like assets loadde yaya");
             var tabGroups = settingsMenu.GetComponentsInChildren<UI_TabGroup>();
             UI_TabGroup? tabGroup = tabGroups.FirstOrDefault(tabGroup => tabGroup.name.ToLower() == "tab selection hor");
             if (tabGroup != null)
@@ -215,8 +199,12 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
         }
     }
     
+    public static bool IsMainThread => System.Threading.Thread.CurrentThread.ManagedThreadId == mainThreadId;
+    internal static int mainThreadId;
     public void Awake()
     {
+        mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+        
         Log = Logger;
         Instance = this;
         RHLog.Info("Setting up config");
@@ -233,6 +221,7 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
             if(!scene.name.ToLower().Contains("intro") && !hasLoadedIntro)
             {
                 hasLoadedIntro = true;
+                RHLog.Info("Loading internal assets...");
                 Assets?.LoadAllAssets();
 
                 CoroutineDispatcher.AddToUpdate(() =>
@@ -242,26 +231,33 @@ public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of log
                         sr.sprite = sr.sprite;
                 });
                 
+                RHLog.Info("Loading debug tools...");
                 DebugTools.Create();
             }
             
             if (!hasLoadedIntro)
                 return;
             
+            RHLog.Info("Checking packs state...");
             if (ResourcePacksManager.HasPacksChanged)
-                ResourcePacksManager.ReloadPacks_Internal();
+                ResourcePacksManager.ReloadPacks();
             
+            RHLog.Info("Refreshing custom commands...");
             RHCommands.RefreshCommands();
 
+            RHLog.Info("Loading settings menu...");
             var settingsMenu = Object.FindObjectsOfType<UI_SettingsMenu>(true).FirstOrDefault(m => m.gameObject.scene == scene);
             if (settingsMenu && Assets != null) // right now i don't think there is a "standard" way to inject a custom menu into settings, so this will prolly break if another mod does this too
             {
                 CoroutineDispatcher.Dispatch(LoadCustomSettings(settingsMenu));
             }
             
+            RHLog.Info("Refreshing assets...");
             RefreshTextures();
             RefreshSounds();
         };
+        
+        RHLog.Info("Resourceful Hands has loaded!");
     }
 }
 // amongus

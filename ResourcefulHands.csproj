@@ -99,9 +99,6 @@
       <Reference Include="MonoMod.Utils">
         <HintPath>Libs\Bepinex\MonoMod.Utils.dll</HintPath>
       </Reference>
-      <Reference Include="NAudio-Unity">
-        <HintPath>Libs\Other\NAudio-Unity.dll</HintPath>
-      </Reference>
       <Reference Include="Newtonsoft.Json">
         <HintPath>Libs\Newtonsoft.Json.dll</HintPath>
       </Reference>

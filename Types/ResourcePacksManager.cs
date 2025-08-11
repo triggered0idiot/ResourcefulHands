@@ -126,7 +126,11 @@ public static class ResourcePacksManager
     // Reloads every pack
     public static void ReloadPacks()
     {
-        if (isReloading) return;
+        if (isReloading)
+        {
+            RHLog.Warning("Tried to reload while already reloading?");
+            return;
+        }
 
         RHLog.Debug("Dispatching pack reloader task...");
         Task.Run(async () =>
@@ -218,13 +222,16 @@ public static class ResourcePacksManager
         if (failedPacks > 0)
             RHLog.Warning($"{failedPacks} packs failed to load!");
 
-        // attempt to refresh previously loaded stuff
-        Plugin.RefreshTextures();
-        Plugin.RefreshSounds();
-        
-        // just incase
-        if(UI_RHPacksList.Instance != null)
-            UI_RHPacksList.Instance?.BuildList();
+        await CoroutineDispatcher.RunOnMainThreadAndWait(() =>
+        {
+            // attempt to refresh previously loaded stuff
+            Plugin.RefreshTextures();
+            Plugin.RefreshSounds();
+
+            // just incase
+            if (UI_RHPacksList.Instance != null)
+                UI_RHPacksList.Instance?.BuildList();
+        });
 
         isReloading = false;
     }

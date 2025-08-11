@@ -13,26 +13,41 @@ namespace ResourcefulHands;
 public static class RHLog
 {
     private const string Prefix = "[Resourceful Hands] ";
-    
+
+    // TODO: unsure if this needs to be ran on the main thread to work, test this
 
     [Conditional("DEBUG")]
     public static void Debug(object data,
         [CallerLineNumber] int lineNumber = 0,
-        [CallerFilePath] string file = "") => Plugin.Log.LogInfo($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
-    
+        [CallerFilePath] string file = "")
+    {
+        CoroutineDispatcher.RunOnMainThreadOrCurrent(() => Plugin.Log.LogDebug($"[{Path.GetFileName(file)}:{lineNumber}] {data}"));
+    }
     public static void Info(object data,
         [CallerLineNumber] int lineNumber = 0,
-        [CallerFilePath] string file = "") => Plugin.Log.LogInfo($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
+        [CallerFilePath] string file = "")
+    {
+        CoroutineDispatcher.RunOnMainThreadOrCurrent(() => Plugin.Log.LogInfo($"[{Path.GetFileName(file)}:{lineNumber}] {data}"));
+    }
     public static void Message(object data,
         [CallerLineNumber] int lineNumber = 0,
-        [CallerFilePath] string file = "") => Plugin.Log.LogMessage($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
+        [CallerFilePath] string file = "") 
+    {
+        CoroutineDispatcher.RunOnMainThreadOrCurrent(() => Plugin.Log.LogMessage($"[{Path.GetFileName(file)}:{lineNumber}] {data}"));
+    }
     
     public static void Warning(object data,
         [CallerLineNumber] int lineNumber = 0,
-        [CallerFilePath] string file = "") => Plugin.Log.LogWarning($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
+        [CallerFilePath] string file = "")
+    {
+        CoroutineDispatcher.RunOnMainThreadOrCurrent(() => Plugin.Log.LogWarning($"[{Path.GetFileName(file)}:{lineNumber}] {data}"));
+    }
     public static void Error(object data,
         [CallerLineNumber] int lineNumber = 0,
-        [CallerFilePath] string file = "") => Plugin.Log.LogError($"[{Path.GetFileName(file)}:{lineNumber}] {data}");
+        [CallerFilePath] string file = "")
+    {
+        CoroutineDispatcher.RunOnMainThreadOrCurrent(() => Plugin.Log.LogError($"[{Path.GetFileName(file)}:{lineNumber}] {data}"));
+    }
     
     public static class Player
     {

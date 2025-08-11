@@ -171,24 +171,30 @@ public class TexturePack
         if(!File.Exists(iconPath))
         {
             RHLog.Warning($"{path} doesn't have an pack.png! (icon path: '{pack.relativeIconPath}')");
-            pack.Icon = Plugin.IconGray ?? new Texture2D(2,2);
+            await CoroutineDispatcher.RunOnMainThreadAndWait(() =>
+            {
+                pack.Icon = Plugin.IconGray ?? new Texture2D(2,2);
+            });
         }
         else
         {
             byte[] fileBytes = await File.ReadAllBytesAsync(iconPath);
-            Texture2D texture = new Texture2D(2, 2);
-            if (!texture.LoadImage(fileBytes, false))
+            await CoroutineDispatcher.RunOnMainThreadAndWait(() =>
             {
-                RHLog.Warning($"{iconPath} isn't a valid texture!");
-                try{Object.Destroy(texture);}catch{/**/}
-            }
-            else
-            {
-                texture.name = Path.GetFileNameWithoutExtension(iconPath);
-                texture.filterMode = FilterMode.Point; // something, something retro
-                texture.Apply();
-                pack.Icon = texture;
-            }
+                Texture2D texture = new Texture2D(2, 2);
+                if (!texture.LoadImage(fileBytes, false))
+                {
+                    RHLog.Warning($"{iconPath} isn't a valid texture!");
+                    try{Object.Destroy(texture);}catch{/**/}
+                }
+                else
+                {
+                    texture.name = Path.GetFileNameWithoutExtension(iconPath);
+                    texture.filterMode = FilterMode.Point; // something, something retro
+                    texture.Apply();
+                    pack.Icon = texture;
+                }
+            });
         }
         
         string prevGuid = pack.guid;
@@ -235,18 +241,22 @@ public class TexturePack
                 continue;
             }
             byte[] fileBytes = await File.ReadAllBytesAsync(textureFile);
-            Texture2D texture = new Texture2D(2, 2);
-            if (!texture.LoadImage(fileBytes, false))
+            RHLog.Debug("Texture valid, queuing...");
+            await CoroutineDispatcher.RunOnMainThreadAndWait(() =>
             {
-                RHLog.Warning($"{textureFile} isn't a valid texture!");
-                try{Object.Destroy(texture);}catch{/**/}
-                continue;
-            }
-            texture.name = Path.GetFileNameWithoutExtension(textureFile);
-            texture.filterMode = FilterMode.Point; // something, something retro
-            texture.Apply();
-            if (!pack.Textures.TryAdd(texture.name, texture))
-                RHLog.Error($"Failed to add {textureFile} because texture of that name already exists in the same pack!");
+                Texture2D texture = new Texture2D(2, 2);
+                if (!texture.LoadImage(fileBytes, false))
+                {
+                    RHLog.Warning($"{textureFile} isn't a valid texture!");
+                    try{Object.Destroy(texture);}catch{/**/}
+                    return;
+                }
+                texture.name = Path.GetFileNameWithoutExtension(textureFile);
+                texture.filterMode = FilterMode.Point; // something, something retro
+                texture.Apply();
+                if (!pack.Textures.TryAdd(texture.name, texture))
+                    RHLog.Error($"Failed to add {textureFile} because texture of that name already exists in the same pack!");
+            });
         }
 
         // Magic happens here :D
@@ -323,12 +333,15 @@ public class TexturePack
             RHLog.Error($"Error while loading {clipName} [at: {filepath}]");
         }
 
-        if (audioClip is null) return;
+        if (audioClip == null) return;
         
         pack.RawSounds.Add(audioClip);
         
         audioClip.name = clipName;
-        if (!pack.Sounds.TryAdd(clipName, audioClip))
-            RHLog.Error($"Failed to add {clipName} because sound of that name already exists in the same pack! [at: {filepath}]");
+        lock (pack.Sounds)
+        {
+            if (!pack.Sounds.TryAdd(clipName, audioClip))
+                RHLog.Error($"Failed to add {clipName} because sound of that name already exists in the same pack! [at: {filepath}]");
+        }
     }
 }
