@@ -141,8 +141,6 @@ public static class AudioSourcePatches
     // Setters and Getters for clip are not needed,
     // Patching the play functions is the better and 100% working way
     
-    
-    
     // Patch parameterless Play()
     [HarmonyPatch(nameof(AudioSource.Play), [])]
     [HarmonyPrefix]
@@ -162,7 +160,7 @@ public static class AudioSourcePatches
         => SwapClip(__instance);
     
     // Patch PlayOneShot(AudioClip)
-    [HarmonyPatch(typeof(AudioSource), nameof(AudioSource.PlayOneShot), typeof(AudioClip))]
+    [HarmonyPatch(nameof(AudioSource.PlayOneShot), typeof(AudioClip))]
     [HarmonyPrefix]
     private static void PlayOneShot_ClipOnly_Postfix(AudioSource __instance, ref AudioClip __0)
     {
@@ -172,7 +170,7 @@ public static class AudioSourcePatches
     }
 
     // Patch PlayOneShot(AudioClip, float volumeScale)
-    [HarmonyPatch(typeof(AudioSource), nameof(AudioSource.PlayOneShot), typeof(AudioClip), typeof(float))]
+    [HarmonyPatch(nameof(AudioSource.PlayOneShot), typeof(AudioClip), typeof(float))]
     [HarmonyPrefix]
     private static void PlayOneShot_ClipAndVolume_Postfix(AudioSource __instance, ref AudioClip __0)
     {
@@ -202,22 +200,51 @@ public static class AudioSourcePatches
 public static class MaterialPatches
 {
     private static bool dontPatch = false; // prevents loopbacks
-    internal static Dictionary<string, Texture> previousTextures = new();
+    internal static Dictionary<string, Texture> previousTextures = new(); // TODO: implement this so original textures can be restored correctly
     private static readonly int MainTex = Shader.PropertyToID("_MainTex");
 
-    // TODO: add .GetTexture and .SetTexture patches
+    [HarmonyPatch(nameof(Material.SetTexture), new[] { typeof(string), typeof(Texture) })]
+    [HarmonyPrefix]
+    public static void SetTexture_Prefix(Material __instance, string name, ref Texture value)
+    {
+        if (value == null) return;
+        
+        var texture = ResourcePacksManager.GetTextureFromPacks(value.name);
+        if(texture == null) return;
+        
+        previousTextures.TryAdd(value.name, value);
+        value = texture;
+    }
+    [HarmonyPatch(nameof(Material.SetTexture), new[] { typeof(int), typeof(Texture) })]
+    [HarmonyPrefix]
+    public static void SetTexture_Prefix(Material __instance, int nameID, ref Texture value)
+    {   
+        if (value == null) return;
+        
+        var texture = ResourcePacksManager.GetTextureFromPacks(value.name);
+        if(texture == null) return;
+        
+        previousTextures.TryAdd(value.name, value);
+        value = texture;
+    }
 
-    public static void SetMainTexture(Material m, Texture texture)
+    public static void PatchMainTexture(Material __instance, ref Texture __result)
     {
+        if(__instance == null) return;
+        if(!__instance.HasTexture(MainTex)) return;
+        
         dontPatch = true;
-        m.mainTexture = texture;
-    }
-    public static Texture GetMainTexture(Material m)
-    {
+        var mainTex = __instance.mainTexture;
+        if(mainTex == null) return;
+        
+        var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
+        if(texture == null) return;
+        
+        previousTextures.TryAdd(mainTex.name, mainTex);
         dontPatch = true;
-        return m.mainTexture;
+        __instance.mainTexture = texture;
     }
-    
+    // TODO: remove this specific patch as its probably a bad idea to mess with the texture this way
     [HarmonyPatch(methodName:"get_mainTexture")]
     [HarmonyPostfix]
     private static void Getter_Postfix(Material __instance, ref Texture __result)
@@ -225,41 +252,16 @@ public static class MaterialPatches
         if (dontPatch)
         { dontPatch = false; return; }
         
-        if(__instance == null) return;
-        if(!__instance.HasTexture(MainTex)) return;
-        
-        dontPatch = true;
-        var mainTex = __instance.mainTexture;
-        if(mainTex == null) return;
-        
-        var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
-        if(texture == null) return;
-        texture.name = mainTex.name + " [replaced]"; // change name to help with restoration?
-        
-        previousTextures.TryAdd(mainTex.name, mainTex);
-        __instance.mainTexture = texture;
+        PatchMainTexture(__instance, ref __result);
     }
-
     [HarmonyPatch(methodName:"set_mainTexture")]
     [HarmonyPostfix]
-    private static void Setter_Prefix(Material __instance, ref Texture value)
+    private static void Setter_Postfix(Material __instance, ref Texture value)
     {
         if (dontPatch)
         { dontPatch = false; return; }
         
-        if(__instance == null) return;
-        if(!__instance.HasTexture(MainTex)) return;
-        
-        dontPatch = true;
-        var mainTex = __instance.mainTexture;
-        if(mainTex == null) return;
-        
-        var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
-        if(texture == null) return;
-        texture.name = mainTex.name + " [replaced]"; // change name to help with restoration?
-        
-        previousTextures.TryAdd(mainTex.name, mainTex);
-        __instance.mainTexture = texture;
+        PatchMainTexture(__instance, ref value);
     }
 }
 
@@ -275,16 +277,13 @@ public static class RendererPatches
         if (__instance == null ||  __instance.sharedMaterials == null)
             return;
         
-#if DEBUG
-        RHLog.Info($"{__instance?.name} (Renderer) was accessed [ctor]");
-#endif
+        RHLog.Debug($"{__instance?.name} (Renderer) was accessed [ctor]");
 
         foreach (var material in __instance.sharedMaterials)
         {
             if(!material.HasProperty(MainTex)) continue;
-#if DEBUG
-            RHLog.Info("invoking material.mainTexture [passing to patch]");
-#endif
+            
+            RHLog.Debug("invoking material.mainTexture [passing to patch]");
             var texture = material.mainTexture;
         }
     }

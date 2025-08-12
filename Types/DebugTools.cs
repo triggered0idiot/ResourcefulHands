@@ -45,7 +45,7 @@ public class DebugTools : MonoBehaviour
 #if DEBUG
         isOn = true;
 #endif
-        if (RHConfig.AlwaysDebug?.Value ?? false)
+        if (RHConfig.AlwaysDebug)
             isOn = true;
         
         _style = new GUIStyle
@@ -85,11 +85,10 @@ public class DebugTools : MonoBehaviour
 
     public void LateUpdate()
     {
-        if(_enableNextFrame)
-        {
-            isOn = true;
-            _enableNextFrame = false;
-        }
+        if (!_enableNextFrame) return;
+        
+        isOn = true;
+        _enableNextFrame = false;
     }
 }
 

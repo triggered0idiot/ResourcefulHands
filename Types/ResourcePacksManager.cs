@@ -32,7 +32,7 @@ public static class ResourcePacksManager
 
         if (texture) return texture;
 
-        if (textureName == "DeathFloor_02" || textureName == "_CORRUPTTEXTURE")
+        if (textureName is "DeathFloor_02" or "_CORRUPTTEXTURE")
             return Plugin.CorruptionTexture;
         
         return null;
@@ -152,7 +152,7 @@ public static class ResourcePacksManager
         }
         LoadedPacks.Clear();
         RHLog.Info("Expanding zips...");
-        string[] zipPaths = Directory.GetFiles(Plugin.ConfigFolder, "*.zip", SearchOption.TopDirectoryOnly);
+        string[] zipPaths = Directory.GetFiles(RHConfig.PacksFolder, "*.zip", SearchOption.TopDirectoryOnly);
         foreach (string zipPath in zipPaths)
         {
             try
@@ -164,11 +164,11 @@ public static class ResourcePacksManager
 
                 if (isTopLevelZip)
                 {
-                    var zipTargDir = Directory.CreateDirectory(Path.Combine(Plugin.ConfigFolder, Path.GetFileNameWithoutExtension(zipPath)));
+                    var zipTargDir = Directory.CreateDirectory(Path.Combine(RHConfig.PacksFolder, Path.GetFileNameWithoutExtension(zipPath)));
                     ZipFile.ExtractToDirectory(zipPath, zipTargDir.FullName);
                 }
                 else
-                    ZipFile.ExtractToDirectory(zipPath, Plugin.ConfigFolder);
+                    ZipFile.ExtractToDirectory(zipPath, RHConfig.PacksFolder);
                 
                 File.Delete(zipPath);
                 RHLog.Info($"Expanded!");
@@ -181,7 +181,7 @@ public static class ResourcePacksManager
         }
         RHLog.Info("Loading texture packs...");
         List<string> paths = new();
-        paths.AddRange(Directory.GetDirectories(Plugin.ConfigFolder, "*", SearchOption.TopDirectoryOnly));
+        paths.AddRange(Directory.GetDirectories(RHConfig.PacksFolder, "*", SearchOption.TopDirectoryOnly));
         paths.AddRange(Directory.GetDirectories(Paths.PluginPath, "*", SearchOption.AllDirectories)); // check sub dirs for plugins
 
         int failedPacks = 0;

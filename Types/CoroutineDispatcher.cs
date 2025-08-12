@@ -46,8 +46,13 @@ public class CoroutineDispatcher : MonoBehaviour
             hasRan = true;
         });
 
+        int fps = Mathf.Clamp(Application.targetFrameRate, -1, 120);
+        if (fps < 1) fps = 60;
+        
+        // wait at around the speed of the current fps
+        // this isn't the exact fps because it would be overkill
         while (!hasRan)
-            await Task.Delay(16); // wait ~60fps
+            await Task.Delay(Mathf.FloorToInt((1.0f/fps)*1000)); 
         
         RHLog.Debug($"[{Path.GetFileName(file)}:{lineNumber}] has executed!");
     }
@@ -90,8 +95,7 @@ public class CoroutineDispatcher : MonoBehaviour
     }
     public static void RemoveFromUpdate(string guid)
     {
-        if(updateActions.ContainsKey(guid))
-            updateActions.Remove(guid);
+        updateActions.Remove(guid);
     }
 
     public void LateUpdate()
@@ -102,8 +106,7 @@ public class CoroutineDispatcher : MonoBehaviour
         while (threadQueue.Count > 0)
         {
             Action action = threadQueue.Dequeue();
-            if (action != null)
-                action();
+            action?.Invoke();
         }
     }
 }

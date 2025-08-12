@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -51,7 +52,6 @@ public class Plugin : BaseUnityPlugin
     
     public static Plugin Instance { get; private set; } = null!;
     internal static ManualLogSource Log { get; private set; } = null!; // create log source for RHLog
-    public static string ConfigFolder => Path.Combine(Paths.ConfigPath, "RHPacks");
     
     public static bool IsDemo
     {
@@ -128,7 +128,6 @@ public class Plugin : BaseUnityPlugin
         }
         try
         {
-            RHLog.Info("so like assets loadde yaya");
             var tabGroups = settingsMenu.GetComponentsInChildren<UI_TabGroup>();
             UI_TabGroup? tabGroup = tabGroups.FirstOrDefault(tabGroup => tabGroup.name.ToLower() == "tab selection hor");
             if (tabGroup != null)
@@ -146,7 +145,7 @@ public class Plugin : BaseUnityPlugin
                 reloadButton.onClick.AddListener(ResourcePacksManager.ReloadPacks);
                 Button openFolder = menu.transform.Find("OpenFolder")
                     .GetComponentInChildren<Button>();
-                openFolder.onClick.AddListener(() => Application.OpenURL("file://" + ConfigFolder.Replace("\\", "/")));
+                openFolder.onClick.AddListener(() => Application.OpenURL("file://" + RHConfig.PacksFolder.Replace("\\", "/")));
                 
                 menu.AddComponent<UI_RHPacksList>();
                 menu.SetActive(false);
@@ -199,6 +198,7 @@ public class Plugin : BaseUnityPlugin
         }
     }
     
+    public static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     public static bool IsMainThread => System.Threading.Thread.CurrentThread.ManagedThreadId == mainThreadId;
     internal static int mainThreadId;
     public void Awake()
@@ -207,10 +207,10 @@ public class Plugin : BaseUnityPlugin
         
         Log = Logger;
         Instance = this;
-        RHLog.Info("Setting up config");
-        if (!Directory.Exists(ConfigFolder))
-            Directory.CreateDirectory(ConfigFolder);
-        RHConfig.BindConfigs();
+        RHConfig.InitConfigs();
+        
+        if(IsWindows && RHConfig.ColoredConsole)
+            AnsiSupport.EnableConsoleColors();
         
         Harmony = new Harmony(GUID);
         Harmony.PatchAll();

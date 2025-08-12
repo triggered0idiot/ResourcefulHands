@@ -70,11 +70,11 @@ public class UI_RHPack : MonoBehaviour
         EnableOff!.enabled = !active;
         EnableOn!.enabled = active;
 
-        if (pack.steamid > 0)
+        if (pack.steamId > 0)
         {
             SteamAuthor?.onClick.AddListener(() =>
             {
-                SteamFriends.OpenUserOverlay(pack.steamid, "steamid");
+                SteamFriends.OpenUserOverlay(pack.steamId, "steamid");
             });
         }
         else
@@ -85,7 +85,7 @@ public class UI_RHPack : MonoBehaviour
             RHCommands.MovePack(_pack, true);
             UI_RHPacksList.Instance?.BuildList();
             
-            if (RHConfig.LazyManip?.Value ?? false)
+            if (RHConfig.LazyManip)
             {
                 Plugin.RefreshTextures();
                 Plugin.RefreshSounds();
@@ -98,7 +98,7 @@ public class UI_RHPack : MonoBehaviour
             RHCommands.MovePack(_pack, false);
             UI_RHPacksList.Instance?.BuildList();
             
-            if (RHConfig.LazyManip?.Value ?? false)
+            if (RHConfig.LazyManip)
             {
                 Plugin.RefreshTextures();
                 Plugin.RefreshSounds();
@@ -111,7 +111,7 @@ public class UI_RHPack : MonoBehaviour
             _pack.IsActive = !_pack.IsActive;
             UI_RHPacksList.Instance?.BuildList();
             
-            if (RHConfig.LazyManip?.Value ?? false)
+            if (RHConfig.LazyManip)
             {
                 Plugin.RefreshTextures();
                 Plugin.RefreshSounds();

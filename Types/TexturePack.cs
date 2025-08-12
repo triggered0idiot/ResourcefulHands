@@ -15,7 +15,7 @@ namespace ResourcefulHands;
 /*
     // incase whoever is reading this doesn't understand the point of the whole format-version thing
     // its just used to show which json files are compatible with what mod versions
-    // i.e features from version 2 will only work on 0.9.60 and not 0.9.51
+    // i.e features from version 2 will only work on >0.9.60 and not 0.9.51
     // ideally version 1 will work on any version of rh unless the core formatting is changed for some reason
 
     // version 1 spec
@@ -55,8 +55,8 @@ public class TexturePack
     public string name = string.Empty;
     public string desc = string.Empty;
     public string author = string.Empty;
-    [JsonProperty(NullValueHandling=NullValueHandling.Ignore)]
-    public ulong steamid = 0;
+    [JsonProperty(propertyName:"steamid", NullValueHandling=NullValueHandling.Ignore)]
+    public ulong steamId = 0;
     [JsonProperty(NullValueHandling=NullValueHandling.Include)]
     public string guid = string.Empty;
     
