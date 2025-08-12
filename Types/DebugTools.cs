@@ -32,7 +32,6 @@ public class DebugTools : MonoBehaviour
         if(!force && _playingClips.Contains(clip))
             yield break;
         
-        RHLog.Debug($"Queuing sound '{clip.name}'");
         _playingClips.Add(clip);
         yield return new WaitForSeconds(1.0f);
         if(clip)
