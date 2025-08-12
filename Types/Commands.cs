@@ -50,28 +50,7 @@ public static class RHCommands
         ccInst.RegisterCommand(DisableCommand, DisablePack, false);
         ccInst.RegisterCommand(ToggleDebug, (args) => { DebugTools.isOn = !DebugTools.isOn; }, false);
     }
-
-
-    internal static void MovePack(TexturePack pack, bool isUp)
-    {
-        int packIndex = ResourcePacksManager.LoadedPacks.FindIndex(p => p == pack);
-
-        int nextPackIndex = 0;
-        nextPackIndex = isUp
-                ? Math.Clamp(packIndex - 1, 0, ResourcePacksManager.LoadedPacks.Count - 1)
-                : Math.Clamp(packIndex + 1, 0, ResourcePacksManager.LoadedPacks.Count - 1);
-
-        if (nextPackIndex == packIndex)
-        {
-            RHLog.Warning("Can't move pack out of range");
-            return;
-        }
-
-        TexturePack previousPack = ResourcePacksManager.LoadedPacks[nextPackIndex];
-        ResourcePacksManager.LoadedPacks[nextPackIndex] = pack;
-        ResourcePacksManager.LoadedPacks[packIndex] = previousPack;
-    }
-
+    
     private static void MovePacks(string[] args)
     {
         const string helpText =
@@ -99,7 +78,7 @@ public static class RHCommands
         }
 
         bool isUp = dir is "up" or "u";
-        MovePack(pack, isUp);
+        ResourcePacksManager.MovePack(pack, isUp);
 
         RHLog.Player.Info("Reloading packs...");
         ResourcePacksManager.ReloadPacks();

@@ -72,7 +72,7 @@ public static class RHLog
         [CallerLineNumber] int lineNumber = 0,
         [CallerFilePath] string file = "")
     {
-        CoroutineDispatcher.RunOnMainThreadOrCurrent(() => Plugin.Log.LogDebug($"{Magenta}[{Path.GetFileName(file)}:{lineNumber}] {data}"));
+        CoroutineDispatcher.RunOnMainThreadOrCurrent(() => Plugin.Log.LogInfo($"{Magenta}[{Path.GetFileName(file)}:{lineNumber}] {data}"));
     }
     public static void Info(object data,
         [CallerLineNumber] int lineNumber = 0,

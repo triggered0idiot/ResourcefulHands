@@ -116,7 +116,7 @@ public class Plugin : BaseUnityPlugin
         { audioSource.clip = audioSource.clip; }
     }
 
-    IEnumerator LoadCustomSettings(UI_SettingsMenu settingsMenu)
+    private IEnumerator LoadCustomSettings(UI_SettingsMenu settingsMenu)
     {
         yield return new WaitForSecondsRealtime(1.0f);
         
@@ -212,18 +212,22 @@ public class Plugin : BaseUnityPlugin
         if(IsWindows && RHConfig.ColoredConsole)
             AnsiSupport.EnableConsoleColors();
         
+        RHLog.Debug("Patching...");
         Harmony = new Harmony(GUID);
         Harmony.PatchAll();
 
+        RHLog.Debug("Hooking loaded event...");
         bool hasLoadedIntro = false;
         SceneManager.sceneLoaded += (scene, mode) =>
         {
+            RHLog.Debug("Evaluating newly loaded scene...");
             if(!scene.name.ToLower().Contains("intro") && !hasLoadedIntro)
             {
                 hasLoadedIntro = true;
                 RHLog.Info("Loading internal assets...");
                 Assets?.LoadAllAssets();
 
+                RHLog.Debug("Hooking sprites to update...");
                 CoroutineDispatcher.AddToUpdate(() =>
                 {
                     var spriteRenderers = FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
@@ -257,7 +261,7 @@ public class Plugin : BaseUnityPlugin
             RefreshSounds();
         };
         
-        RHLog.Info("Resourceful Hands has loaded!");
+        RHLog.Message("Resourceful Hands has loaded!");
     }
 }
 // amongus

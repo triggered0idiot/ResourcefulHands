@@ -90,6 +90,9 @@ public class TexturePack
     [JsonIgnore]
     [System.NonSerialized]
     protected List<AudioClip> RawSounds = [];
+    [JsonIgnore]
+    [System.NonSerialized]
+    public bool IsConfigFolderPack = true;
 
     [JsonIgnore]
     public string PackPath { private set; get; } = string.Empty;
@@ -135,6 +138,8 @@ public class TexturePack
     
     public static async Task<TexturePack?> Load(string path, bool force = false)
     {
+        bool isConfigPack = path.Contains("config") && path.Contains("RHPacks");
+
         string jsonPath = Path.Combine(path, "info.json");
         if(!File.Exists(jsonPath))
         {
@@ -149,6 +154,7 @@ public class TexturePack
             return null;
         }
         pack.PackPath = path;
+        pack.IsConfigFolderPack = isConfigPack;
         
         if (!force)
         {

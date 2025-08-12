@@ -13,12 +13,11 @@ namespace ResourcefulHands;
 
 public static class ResourcePacksManager
 {
-    public static List<TexturePack> LoadedPacks { get; internal set; } = [];
-    public static TexturePack[] ActivePacks => LoadedPacks.Where(pack => pack.IsActive).ToArray();
-    public static bool HasPacksChanged = true;
+    public static bool IsUsingRHPacksFolder => LoadedPacks.Exists(p => p.IsConfigFolderPack);
     
-    public const string PackPrefsName = "__ResourcefulHands_Mod_PackOrder";
-    public const string DisabledPacksPrefsName = "__ResourcefulHands_Mod_DisabledPacks";
+    public static List<TexturePack> LoadedPacks { get; internal set; } = [];
+    public static TexturePack[] ActivePacks => (LoadedPacks ?? []).Where(pack => pack is { IsActive: true }).ToArray();
+    public static bool HasPacksChanged = true;
 
     public static Texture2D? GetTextureFromPacks(string textureName)
     {
@@ -49,7 +48,29 @@ public static class ResourcePacksManager
 
         return clip;
     }
+    
+    internal static void MovePack(TexturePack pack, bool isUp)
+    {
+        int packIndex = ResourcePacksManager.LoadedPacks.FindIndex(p => p == pack);
 
+        int nextPackIndex = 0;
+        nextPackIndex = isUp
+            ? Math.Clamp(packIndex - 1, 0, ResourcePacksManager.LoadedPacks.Count - 1)
+            : Math.Clamp(packIndex + 1, 0, ResourcePacksManager.LoadedPacks.Count - 1);
+
+        if (nextPackIndex == packIndex)
+        {
+            RHLog.Warning("Can't move pack out of range");
+            return;
+        }
+
+        TexturePack previousPack = ResourcePacksManager.LoadedPacks[nextPackIndex];
+        ResourcePacksManager.LoadedPacks[nextPackIndex] = pack;
+        ResourcePacksManager.LoadedPacks[packIndex] = previousPack;
+        
+        ResourcePacksManager.Save();
+    }
+    
     internal static void SaveDisabledPacks()
     {
         List<string> disabledPacks = [];
@@ -58,18 +79,18 @@ public static class ResourcePacksManager
             if (!pack.IsActive)
                 disabledPacks.Add(pack.guid);
         }
-        string listJson = JsonConvert.SerializeObject(disabledPacks.ToArray());
-        PlayerPrefs.SetString(DisabledPacksPrefsName, listJson);
+        RHConfig.PackPrefs.DisabledPacks = disabledPacks.ToArray();
+        RHConfig.PackPrefs.Save();
     }
     internal static void LoadDisabledPacks()
     {
-        string listJson = PlayerPrefs.GetString(DisabledPacksPrefsName, "");
-        if(string.IsNullOrWhiteSpace(listJson)) return;
-        string[]? disabledPacks = JsonConvert.DeserializeObject<string[]>(listJson);
-        if(disabledPacks == null || disabledPacks.Length == 0) return;
+        RHConfig.PackPrefs.Load();
+        string[] disabledPacks = RHConfig.PackPrefs.DisabledPacks;
+        if(disabledPacks.Length == 0) return;
         
         foreach (var disabledPackGuid in disabledPacks)
         {
+            RHLog.Debug($"{disabledPackGuid} is a disabled pack.");
             foreach (var pack in LoadedPacks.Where(pack => pack.guid == disabledPackGuid))
                 pack.IsActive = false;
         }
@@ -83,43 +104,43 @@ public static class ResourcePacksManager
             var pack = LoadedPacks[i];
             currentPacksState[i] = pack.guid;
         }
-        string listJson = JsonConvert.SerializeObject(currentPacksState);
-        PlayerPrefs.SetString(PackPrefsName, listJson);
+        
+        RHConfig.PackPrefs.PackOrder = currentPacksState;
+        RHConfig.PackPrefs.Save();
     }
     internal static void LoadPackOrder()
     {
-        string listJson = PlayerPrefs.GetString(PackPrefsName, "");
-        if (!string.IsNullOrWhiteSpace(listJson))
+        RHConfig.PackPrefs.Load();
+        string[] previousPacksState = RHConfig.PackPrefs.PackOrder;
+            
+        TexturePack[] previousPacks = LoadedPacks.ToArray();
+        TexturePack?[] newPacks = new TexturePack[previousPacksState.Length];
+        for (int i = 0; i < newPacks.Length; i++)
+            newPacks[i] = null;
+            
+        for (int i = 0; i < previousPacksState.Length; i++)
         {
-            string[]? previousPacksState = JsonConvert.DeserializeObject<string[]>(listJson);
-            if(previousPacksState == null) return;
-            
-            TexturePack[] previousPacks = LoadedPacks.ToArray();
-            TexturePack?[] newPacks = new TexturePack[previousPacksState.Length];
-            for (int i = 0; i < newPacks.Length; i++)
-                newPacks[i] = null;
-            
-            for (int i = 0; i < previousPacksState.Length; i++)
-            {
-                string guid = previousPacksState[i];
-                TexturePack? pack = previousPacks.FirstOrDefault(p => p.guid == guid);
-                if (pack != null)
-                    newPacks[i] = pack;
-            }
-
-            List<TexturePack> finalPacks = [];
-            foreach (var p in newPacks)
-                if(p != null) finalPacks.Add(p);
-            // incase we missed any or replaced them just add them to the end
-            foreach(var p in previousPacks)
-                if(!finalPacks.Contains(p)) finalPacks.Add(p);
-            
-            LoadedPacks = finalPacks;
-            // save the new order
-            SavePackOrder();
+            string guid = previousPacksState[i];
+            TexturePack? pack = previousPacks.FirstOrDefault(p => p.guid == guid);
+            if (pack != null)
+                newPacks[i] = pack;
         }
+
+        List<TexturePack> finalPacks = [];
+        foreach (var p in newPacks)
+            if(p != null) finalPacks.Add(p);
+        // incase we missed any or replaced them just add them to the end
+        foreach(var p in previousPacks)
+            if(!finalPacks.Contains(p)) finalPacks.Add(p);
+            
+        LoadedPacks = finalPacks;
     }
 
+    public static void Save()
+    {
+        SavePackOrder();
+        SaveDisabledPacks();
+    }
 
     private static bool isReloading = false;
     
@@ -147,11 +168,11 @@ public static class ResourcePacksManager
         HasPacksChanged = false;
         if (LoadedPacks.Count != 0)
         {
-            SavePackOrder();
-            SaveDisabledPacks();
+            RHLog.Debug("Saving packs before reloading!");
+            Save();
         }
         LoadedPacks.Clear();
-        RHLog.Info("Expanding zips...");
+        RHLog.Info($"Expanding zips in {RHConfig.PacksFolder}...");
         string[] zipPaths = Directory.GetFiles(RHConfig.PacksFolder, "*.zip", SearchOption.TopDirectoryOnly);
         foreach (string zipPath in zipPaths)
         {
@@ -213,17 +234,17 @@ public static class ResourcePacksManager
             }
         }
 
-        RHLog.Info("Re-ordering to user order...");
-        LoadPackOrder();
-        RHLog.Info("Disabling packs that should be disabled...");
-        LoadDisabledPacks();
-
         RHLog.Info($"Loaded {LoadedPacks.Count}/{LoadedPacks.Count + failedPacks} texture packs");
         if (failedPacks > 0)
             RHLog.Warning($"{failedPacks} packs failed to load!");
 
         await CoroutineDispatcher.RunOnMainThreadAndWait(() =>
         {
+            RHLog.Info("Re-ordering to user order...");
+            LoadPackOrder();
+            RHLog.Info("Disabling packs that should be disabled...");
+            LoadDisabledPacks();
+            
             // attempt to refresh previously loaded stuff
             Plugin.RefreshTextures();
             Plugin.RefreshSounds();

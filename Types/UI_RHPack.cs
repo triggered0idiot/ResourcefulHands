@@ -82,7 +82,7 @@ public class UI_RHPack : MonoBehaviour
         
         Up!.onClick.AddListener(() =>
         {
-            RHCommands.MovePack(_pack, true);
+            ResourcePacksManager.MovePack(_pack, true);
             UI_RHPacksList.Instance?.BuildList();
             
             if (RHConfig.LazyManip)
@@ -95,7 +95,7 @@ public class UI_RHPack : MonoBehaviour
         });
         Down!.onClick.AddListener(() =>
         {
-            RHCommands.MovePack(_pack, false);
+            ResourcePacksManager.MovePack(_pack, false);
             UI_RHPacksList.Instance?.BuildList();
             
             if (RHConfig.LazyManip)
@@ -109,6 +109,7 @@ public class UI_RHPack : MonoBehaviour
         EnableToggle!.onClick.AddListener(() =>
         {
             _pack.IsActive = !_pack.IsActive;
+            ResourcePacksManager.Save();
             UI_RHPacksList.Instance?.BuildList();
             
             if (RHConfig.LazyManip)

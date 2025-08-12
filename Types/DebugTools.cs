@@ -97,45 +97,50 @@ public class DebugTools : MonoBehaviour
 [HarmonyPriority(Priority.Low)]
 public static class DEBUG_AudioSourcePatches
 {
-    [HarmonyPatch(methodName:"set_clip")]
-    [HarmonyPostfix]
-    private static void Setter_Postfix(AudioSource __instance, ref AudioClip value)
+    // CODE FROM: Patches.cs
+    
+    // Patch parameterless Play()
+    [HarmonyPatch(nameof(AudioSource.Play), [])]
+    [HarmonyPrefix]
+    private static void Play_NoArgs_Postfix(AudioSource __instance)
+        => LogClip(src:__instance);
+
+    // Patch Play(double delay)
+    [HarmonyPatch(nameof(AudioSource.Play), new[] { typeof(double) })]
+    [HarmonyPrefix]
+    private static void Play_DelayDouble_Postfix(AudioSource __instance)
+        => LogClip(src:__instance);
+
+    // Patch Play(ulong delaySamples)
+    [HarmonyPatch(nameof(AudioSource.Play), new[] { typeof(ulong) })]
+    [HarmonyPrefix]
+    private static void Play_DelayUlong_Postfix(AudioSource __instance)
+        => LogClip(src:__instance);
+    
+    // Patch PlayOneShot(AudioClip)
+    [HarmonyPatch(nameof(AudioSource.PlayOneShot), typeof(AudioClip))]
+    [HarmonyPrefix]
+    private static void PlayOneShot_ClipOnly_Postfix(AudioSource __instance, ref AudioClip __0)
     {
-        if(!DebugTools.isOn) return;
-        if (value == null) return;
-        
-        if (__instance.isPlaying || (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f))
-            DebugTools.QueueSound(value);
+        LogClip(clip:__0);
+    }
+
+    // Patch PlayOneShot(AudioClip, float volumeScale)
+    [HarmonyPatch(nameof(AudioSource.PlayOneShot), typeof(AudioClip), typeof(float))]
+    [HarmonyPrefix]
+    private static void PlayOneShot_ClipAndVolume_Postfix(AudioSource __instance, ref AudioClip __0)
+    {
+        LogClip(clip:__0);
     }
     
-    [HarmonyPatch(methodName:"get_clip")]
-    [HarmonyPostfix]
-    private static void Getter_Postfix(AudioSource __instance, ref AudioClip __result)
+    // Shared logic
+    private static void LogClip(AudioSource src = null!, AudioClip clip = null!)
     {
         if(!DebugTools.isOn) return;
-        if (__result == null) return;
         
-        if (__instance.isPlaying || (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f))
-            DebugTools.QueueSound(__result);
-    }
-    
-    [HarmonyPatch(methodName:"Play", argumentTypes: [typeof(double)])]
-    [HarmonyPostfix]
-    private static void Play_Prefix(AudioSource __instance, double delay)
-    {
-        if(!DebugTools.isOn) return;
-        if(__instance.clip == null) return;
+        if(src != null) clip = src.clip;
+        if(clip == null) return;
         
-        DebugTools.QueueSound(__instance.clip);
-    }
-    
-    [HarmonyPatch(methodName:"PlayHelper", argumentTypes: [typeof(AudioSource), typeof(ulong)])]
-    [HarmonyPostfix]
-    private static void PlayHelper_Prefix(AudioSource source, ulong delay)
-    {
-        if(!DebugTools.isOn) return;
-        if(source.clip == null) return;
-        
-        DebugTools.QueueSound(source.clip);
+        DebugTools.QueueSound(clip);
     }
 }

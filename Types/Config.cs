@@ -1,6 +1,9 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
+using Newtonsoft.Json;
+using UnityEngine;
 
 namespace ResourcefulHands;
 
@@ -18,6 +21,59 @@ public static class RHConfig
     private static ConfigEntry<bool>? colorConsole = null;
     public static bool ColoredConsole => colorConsole?.Value ?? false;
 
+    // Config folder stuff
+    public static string PacksFolder => Path.Combine(Paths.ConfigPath, "RHPacks");
+    public static string GenericFolder => Path.Combine(Paths.ConfigPath, "RHConfig");
+
+    public static class PackPrefs
+    {
+        [System.Serializable]
+        internal class PrefsObject
+        {
+            [JsonProperty(NullValueHandling=NullValueHandling.Include)]
+            public string[] disabledPacks = [];
+            [JsonProperty(NullValueHandling=NullValueHandling.Include)]
+            public string[] packOrder = [];
+            
+            public static PrefsObject? FromJson(string json) => JsonConvert.DeserializeObject<PrefsObject>(json);
+            public string ToJson() => JsonConvert.SerializeObject(this);
+        }
+        
+        public static string[] DisabledPacks = [];
+        public static string[] PackOrder = [];
+
+        internal static string GetFile()
+        {
+            string path = Path.Combine(GenericFolder, "prefs.json");
+            if(!File.Exists(path))
+                File.WriteAllText(path, "");
+
+            return path;
+        }
+        
+        public static void Load()
+        {
+            string path = GetFile();
+            
+            PrefsObject prefs = PrefsObject.FromJson(File.ReadAllText(path)) ?? new PrefsObject();
+            DisabledPacks = prefs.disabledPacks;
+            PackOrder = prefs.packOrder;
+        }
+
+        public static void Save()
+        {
+            string path = GetFile();
+            
+            PrefsObject prefs = new PrefsObject
+            {
+                disabledPacks = DisabledPacks,
+                packOrder = PackOrder
+            };
+            
+            File.WriteAllText(path, prefs.ToJson());
+        }
+    }
+    
     internal static void InitConfigs()
     {
         RHLog.Info("Initialising configs...");
@@ -25,6 +81,20 @@ public static class RHConfig
         RHLog.Debug("Checking packs folder...");
         if (!Directory.Exists(PacksFolder))
             Directory.CreateDirectory(PacksFolder);
+        
+        RHLog.Debug("Checking generic folder...");
+        if (!Directory.Exists(GenericFolder))
+            Directory.CreateDirectory(GenericFolder);
+        
+        RHLog.Debug("Loading packs prefs...");
+        PackPrefs.Load();
+        Application.quitting += () =>
+        {
+            RHLog.Info("Saving pack prefs...");
+            ResourcePacksManager.SavePackOrder();
+            ResourcePacksManager.SaveDisabledPacks();
+            PackPrefs.Save();
+        };
         
         // bind configs
         RHLog.Debug("Binding configs with bepinex...");
@@ -54,6 +124,4 @@ public static class RHConfig
         );
         RHLog.Debug("Bound lazyManip");
     }
-
-    public static string PacksFolder => Path.Combine(Paths.ConfigPath, "RHPacks");
 }
