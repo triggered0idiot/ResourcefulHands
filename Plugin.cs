@@ -19,7 +19,7 @@ namespace ResourcefulHands;
 // TODO: test for/fix crash when quitting game (unsure but this has happened at-least twice, possible due to the use of DebugTools.cs?)
 
 [BepInPlugin(GUID, "Resourceful Hands", "0.9.61")] // Resourceful Hands
-public class Plugin : BaseUnityPlugin // TODO: implement a consistent way of logging instead of mixing Debug.Log and CommandConsole.Log
+public class Plugin : BaseUnityPlugin
 {
     public const string GUID = "triggeredidiot.wkd.resourcefulhands";
     public const string ModifiedStr = " [modified asset]";
