@@ -30,9 +30,19 @@ public static class SpriteRendererPatches
     private static bool dontPatch = false; // prevents loopbacks
     internal static Dictionary<string, Sprite> _customSpriteCache { get; private set; } = new();
 
+    public static void Patch(SpriteRenderer sr)
+    {
+        if (sr == null) return;
+        dontPatch = true;
+        Sprite s = sr.sprite;
+        if(s == null) return;
+        dontPatch = true;
+        sr.sprite = GetSprite(s) ?? s;
+    }
+    
     public static Sprite? GetSprite(Sprite sprite)
     {
-        if (sprite == null)
+        if (sprite == null || sprite.texture == null)
             return sprite;
 
         bool isModifiedSprite = sprite.name.EndsWith(Plugin.ModifiedStr);
@@ -40,21 +50,29 @@ public static class SpriteRendererPatches
         if(isModifiedSprite)
             spriteCacheName = spriteCacheName.Substring(0, spriteCacheName.Length - Plugin.ModifiedStr.Length);
         
+        string textureCacheName = sprite.texture.name;
+        bool isModifiedTexture = textureCacheName.EndsWith(Plugin.ModifiedStr);
+        if(isModifiedTexture)
+            textureCacheName = textureCacheName.Substring(0, textureCacheName.Length - Plugin.ModifiedStr.Length);
+        
+        Sprite? cachedSprite = null;
         if (_customSpriteCache.TryGetValue(spriteCacheName, out var spriteCache))
         {
             if(spriteCache != null)
-                return spriteCache;
+                cachedSprite = spriteCache;
             else
             {
-                #if DEBUG
-                RHLog.Info($"{spriteCacheName} is null now for some reason [cached]");
-                #endif
+                RHLog.Debug($"{spriteCacheName} is null now for some reason [cached]");
                 _customSpriteCache.Remove(spriteCacheName);
             }
         }
         
-        var texture = ResourcePacksManager.GetTextureFromPacks(sprite.texture.name);
-        if(texture == null) return sprite;
+        var texture = ResourcePacksManager.GetTextureFromPacks(textureCacheName);
+        if (texture == null)
+            return cachedSprite ?? sprite;
+        
+        if (cachedSprite != null && cachedSprite.texture == texture) return cachedSprite;
+        else RHLog.Debug($"Regenerating new sprite for {sprite} because the texture changed.");
 
         // clamp rect incase someone fucks the texture size
         float clampedX = Mathf.Clamp(sprite.rect.x, 0, texture.width);
@@ -64,25 +82,21 @@ public static class SpriteRendererPatches
         
         var localSprite = Sprite.Create(texture, new Rect(clampedX, clampedY, clampedWidth, clampedHeight), new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height), sprite.pixelsPerUnit);
         localSprite.name = spriteCacheName + Plugin.ModifiedStr;
-#if DEBUG
-        RHLog.Info($"cached {spriteCacheName} as {localSprite}");
-        if(isModifiedSprite)
-            RHLog.Warning("cached a modified sprite? idk some fucky stuff is going on");
-#endif
         
+        if(!isModifiedSprite)
+        {
+            RHLog.Debug($"{sprite} is being replaced, assuming its an original sprite we are caching it");
+            var tex = sprite.texture;
+            if (tex == null)
+                RHLog.Warning($"{sprite} has no texture");
+            else
+                OriginalAssetTracker.textures.TryAdd(tex.name, tex);
+        }
+        RHLog.Debug($"cached new replacement {spriteCacheName} as {localSprite}");
+        
+        _customSpriteCache.Remove(spriteCacheName);
         _customSpriteCache.Add(spriteCacheName, localSprite);
         return localSprite; 
-    }
-    
-    [HarmonyPatch(MethodType.Constructor)]
-    [HarmonyPostfix]
-    private static void Constructor_Postfix(SpriteRenderer __instance) // i dont think this gets called
-    {
-        __instance.sprite = __instance.sprite;
-        
-#if DEBUG
-        RHLog.Info($"{__instance?.sprite?.texture.name} was accessed [ctor]");
-#endif
     }
 
     [HarmonyPatch("sprite", MethodType.Getter)]
@@ -113,30 +127,14 @@ public static class SpriteRendererPatches
 [HarmonyPatch(typeof(AudioSource))]
 public static class AudioSourcePatches
 {
-    [HarmonyPatch(MethodType.Constructor)]
-    [HarmonyPostfix]
-    private static void Constructor_Postfix(AudioSource __instance) // i dont think this gets called
-    {
-#if DEBUG
-        RHLog.Info($"{__instance?.clip.name} was accessed [ctor]");
-#endif
-        
-        if(__instance == null) return;
-        if(__instance.clip == null) return;
-        
-        var newClip = ResourcePacksManager.GetSoundFromPacks(__instance.clip.name);
-        if (newClip != null)
-        {
-            __instance.clip = newClip;
-            if (__instance.playOnAwake && Time.timeSinceLevelLoad <= 0.25f && !__instance.isPlaying)
-            {
-                dontPatch = true;
-                __instance.Play();
-            }
-        }
-    }
-
     private static bool dontPatch = false; // prevents loopbacks
+
+    private static void Cache(AudioClip? clip)
+    {
+        if(clip == null) return;
+        //bool isModified = clip.name.EndsWith(Plugin.ModifiedStr);
+        OriginalAssetTracker.sounds.TryAdd(clip.name, clip);
+    }
     
     // Setters and Getters for clip are not needed,
     // Patching the play functions is the better and 100% working way
@@ -164,6 +162,9 @@ public static class AudioSourcePatches
     [HarmonyPrefix]
     private static void PlayOneShot_ClipOnly_Postfix(AudioSource __instance, ref AudioClip __0)
     {
+        // if the original is already cached this will just silently fail
+        Cache(__instance.clip);
+        
         var clip = ResourcePacksManager.GetSoundFromPacks(__instance.clip.name);
         if (clip is not null)
             __0 = clip;
@@ -174,13 +175,16 @@ public static class AudioSourcePatches
     [HarmonyPrefix]
     private static void PlayOneShot_ClipAndVolume_Postfix(AudioSource __instance, ref AudioClip __0)
     {
+        // if the original is already cached this will just silently fail
+        Cache(__instance.clip);
+        
         var clip = ResourcePacksManager.GetSoundFromPacks(__instance.clip.name);
         if (clip is not null)
             __0 = clip;
     }
     
     // Shared logic
-    private static void SwapClip(AudioSource src)
+    internal static void SwapClip(AudioSource src)
     {
         if(dontPatch)
         { dontPatch = false; return; }
@@ -188,6 +192,8 @@ public static class AudioSourcePatches
         if (src?.clip is null) 
             return;
 
+        // if the original is already cached this will just silently fail
+        Cache(src.clip);
         var clip = ResourcePacksManager.GetSoundFromPacks(src.clip.name);
         if (clip is null) 
             return;
@@ -200,19 +206,27 @@ public static class AudioSourcePatches
 public static class MaterialPatches
 {
     private static bool dontPatch = false; // prevents loopbacks
-    internal static Dictionary<string, Texture> previousTextures = new(); // TODO: implement this so original textures can be restored correctly
     private static readonly int MainTex = Shader.PropertyToID("_MainTex");
-
+    
+    internal static void Cache(Texture2D? tex)
+    {
+        //bool isModified = tex.name.EndsWith(Plugin.ModifiedStr);
+        if(tex == null) return;
+        OriginalAssetTracker.textures.TryAdd(tex.name, tex);
+    }
+    
     [HarmonyPatch(nameof(Material.SetTexture), new[] { typeof(string), typeof(Texture) })]
     [HarmonyPrefix]
     public static void SetTexture_Prefix(Material __instance, string name, ref Texture value)
     {
         if (value == null) return;
+        if (value is not Texture2D texture2D) return;
         
-        var texture = ResourcePacksManager.GetTextureFromPacks(value.name);
+        // if the original is already cached this will just silently fail
+        Cache(texture2D);
+        var texture = ResourcePacksManager.GetTextureFromPacks(texture2D.name);
         if(texture == null) return;
         
-        previousTextures.TryAdd(value.name, value);
         value = texture;
     }
     [HarmonyPatch(nameof(Material.SetTexture), new[] { typeof(int), typeof(Texture) })]
@@ -220,11 +234,13 @@ public static class MaterialPatches
     public static void SetTexture_Prefix(Material __instance, int nameID, ref Texture value)
     {   
         if (value == null) return;
+        if (value is not Texture2D texture2D) return;
         
-        var texture = ResourcePacksManager.GetTextureFromPacks(value.name);
+        // if the original is already cached this will just silently fail
+        Cache(texture2D);
+        var texture = ResourcePacksManager.GetTextureFromPacks(texture2D.name);
         if(texture == null) return;
         
-        previousTextures.TryAdd(value.name, value);
         value = texture;
     }
 
@@ -237,22 +253,13 @@ public static class MaterialPatches
         var mainTex = __instance.mainTexture;
         if(mainTex == null) return;
         
+        // if the original is already cached this will just silently fail
+        Cache(mainTex as Texture2D);
         var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
         if(texture == null) return;
         
-        previousTextures.TryAdd(mainTex.name, mainTex);
         dontPatch = true;
         __instance.mainTexture = texture;
-    }
-    // TODO: remove this specific patch as its probably a bad idea to mess with the texture this way
-    [HarmonyPatch(methodName:"get_mainTexture")]
-    [HarmonyPostfix]
-    private static void Getter_Postfix(Material __instance, ref Texture __result)
-    {
-        if (dontPatch)
-        { dontPatch = false; return; }
-        
-        PatchMainTexture(__instance, ref __result);
     }
     [HarmonyPatch(methodName:"set_mainTexture")]
     [HarmonyPostfix]
@@ -270,29 +277,14 @@ public static class RendererPatches
 {
     private static readonly int MainTex = Shader.PropertyToID("_MainTex");
 
-    [HarmonyPatch(MethodType.Constructor)]
-    [HarmonyPostfix]
-    private static void Constructor_Postfix(Renderer __instance)
-    {
-        if (__instance == null ||  __instance.sharedMaterials == null)
-            return;
-        
-        RHLog.Debug($"{__instance?.name} (Renderer) was accessed [ctor]");
-
-        foreach (var material in __instance.sharedMaterials)
-        {
-            if(!material.HasProperty(MainTex)) continue;
-            
-            RHLog.Debug("invoking material.mainTexture [passing to patch]");
-            var texture = material.mainTexture;
-        }
-    }
-
     public static void Patch(ref Material material)
     {
         if(material == null) return;
         if(!material.HasProperty(MainTex)) return;
-        var texture = material.mainTexture;
+        
+        // if the original is already cached this will just silently fail
+        MaterialPatches.Cache(material.mainTexture as Texture2D);
+        material.mainTexture = material.mainTexture;
     }
 
     [HarmonyPatch(methodName:"get_material")]

@@ -329,7 +329,7 @@ public class TexturePack
         {
             while (!uwr.isDone) await Task.Delay(5);
 
-            if (uwr.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError)
+            if (uwr.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError || dh.audioClip == null)
                 RHLog.Error($"Error while loading {clipName} [at: {filepath}]");
             else
                 audioClip = dh.audioClip;

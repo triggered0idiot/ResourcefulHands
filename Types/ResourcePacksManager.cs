@@ -11,6 +11,26 @@ using UnityEngine;
 
 namespace ResourcefulHands;
 
+
+// basically, textures are never fixed rh just hopes that the texture will eventually get reset by something
+// while this works for hands, it doesn't really work for anything else without a scene reload
+internal static class OriginalAssetTracker
+{
+    // as long as no assets of the same type share a name this should be good
+    
+    public static Dictionary<string, Texture2D> textures = new();
+    public static Dictionary<string, AudioClip> sounds = new();
+
+    public static AudioClip? GetSound(string clipName)
+    {
+        return sounds.GetValueOrDefault(clipName);
+    }
+    public static Texture2D? GetTexture(string texName)
+    {
+        return textures.GetValueOrDefault(texName);
+    }
+}
+
 public static class ResourcePacksManager
 {
     public static bool IsUsingRHPacksFolder => LoadedPacks.Exists(p => p.IsConfigFolderPack);
@@ -21,6 +41,12 @@ public static class ResourcePacksManager
 
     public static Texture2D? GetTextureFromPacks(string textureName)
     {
+        if (isReloading)
+        {
+            var originalTexture = OriginalAssetTracker.GetTexture(textureName);
+            return originalTexture ? originalTexture : null;
+        }
+        
         Texture2D? texture = null;
         foreach (var pack in ActivePacks)
         {
@@ -29,8 +55,10 @@ public static class ResourcePacksManager
                 texture = myTexture;
         }
 
+        var og = OriginalAssetTracker.GetTexture(textureName);
         if (texture) return texture;
-
+        if (og) return og; // fallback
+        
         if (textureName is "DeathFloor_02" or "_CORRUPTTEXTURE")
             return Plugin.CorruptionTexture;
         
@@ -38,6 +66,12 @@ public static class ResourcePacksManager
     }
     public static AudioClip? GetSoundFromPacks(string soundName)
     {
+        if (isReloading)
+        {
+            var originalSound = OriginalAssetTracker.GetSound(soundName);
+            return originalSound ? originalSound : null;
+        }
+        
         AudioClip? clip = null;
         foreach (var pack in ActivePacks)
         {
@@ -45,6 +79,10 @@ public static class ResourcePacksManager
             if(myClip != null)
                 clip = myClip;
         }
+        
+        // fallback to any cached original sounds
+        var og = OriginalAssetTracker.GetSound(soundName);
+        if(clip ==null && og) return og;
 
         return clip;
     }
@@ -145,19 +183,31 @@ public static class ResourcePacksManager
     private static bool isReloading = false;
     
     // Reloads every pack
-    public static void ReloadPacks()
+    // wait till ready is needed for commands to not act weird (i.e. allows new command's changes to be applied after old command finishes reloading)
+    public static bool ReloadPacks(bool waitTillReady = false, Action? callback = null)
     {
-        if (isReloading)
+        if (isReloading && !waitTillReady)
         {
             RHLog.Warning("Tried to reload while already reloading?");
-            return;
+            return false;
         }
 
         RHLog.Debug("Dispatching pack reloader task...");
         Task.Run(async () =>
         {
+            if (isReloading && waitTillReady)
+            {
+                RHLog.Debug("Waiting for previous reload...");
+                while (isReloading)
+                    await Task.Delay(125);
+                RHLog.Debug("Reloading...");
+            }
+            
             await ReloadPacks_Internal();
+            if (callback != null)
+                CoroutineDispatcher.RunOnMainThread(callback);
         });
+        return true;
     }
     
     internal static async Task ReloadPacks_Internal()

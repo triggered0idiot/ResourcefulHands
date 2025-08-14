@@ -26,6 +26,8 @@ public static class RHCommands
     public const string ListCommand = "listpacks";
     public const string EnableCommand = "enablepack";
     public const string DisableCommand = "disablepack";
+    public const string EnableAllCommand = "enablepack_all";
+    public const string DisableAllCommand = "disablepack_all";
 
     public const string ToggleDebug = "rhtoggledebug";
 
@@ -40,6 +42,8 @@ public static class RHCommands
         CommandConsole.RemoveCommand(ListCommand);
         CommandConsole.RemoveCommand(EnableCommand);
         CommandConsole.RemoveCommand(DisableCommand);
+        CommandConsole.RemoveCommand(EnableAllCommand);
+        CommandConsole.RemoveCommand(DisableAllCommand);
         CommandConsole.RemoveCommand(ToggleDebug);
 
         ccInst.RegisterCommand(DumpCommand, DumpAllToPack, false);
@@ -48,6 +52,8 @@ public static class RHCommands
         ccInst.RegisterCommand(ListCommand, ListPacks, false);
         ccInst.RegisterCommand(EnableCommand, EnablePack, false);
         ccInst.RegisterCommand(DisableCommand, DisablePack, false);
+        ccInst.RegisterCommand(EnableAllCommand, EnableAll, false);
+        ccInst.RegisterCommand(DisableAllCommand, DisableAll, false);
         ccInst.RegisterCommand(ToggleDebug, (args) => { DebugTools.isOn = !DebugTools.isOn; }, false);
     }
     
@@ -81,8 +87,10 @@ public static class RHCommands
         ResourcePacksManager.MovePack(pack, isUp);
 
         RHLog.Player.Info("Reloading packs...");
-        ResourcePacksManager.ReloadPacks();
-        RHLog.Player.Info($"Moved {pack.name} {'{'}{pack.guid}{'}'} {(isUp ? "up" : "down")} successfully!");
+        ResourcePacksManager.ReloadPacks(true, () =>
+        {
+            RHLog.Player.Info($"Moved {pack.name} {'{'}{pack.guid}{'}'} {(isUp ? "up" : "down")} successfully!");
+        });
     }
 
     private static void ListPacks(string[] args)
@@ -97,8 +105,10 @@ public static class RHCommands
 
     private static void ReloadPacks(string[] args)
     {
-        ResourcePacksManager.ReloadPacks();
-        RHLog.Player.Info("Resource packs reloaded successfully!");
+        ResourcePacksManager.ReloadPacks(true, () =>
+        {
+            RHLog.Player.Info("Resource packs reloaded successfully!");
+        });
     }
 
     private static TexturePack? GetPackFromArgs(string[] args, Action<string> logErr, int indexOverride = 0)
@@ -153,8 +163,10 @@ public static class RHCommands
 
         pack.IsActive = false;
         RHLog.Player.Info("Reloading packs...");
-        ResourcePacksManager.ReloadPacks();
-        RHLog.Player.Info($"Disabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
+        ResourcePacksManager.ReloadPacks(true, () =>
+        {
+            RHLog.Player.Info($"Disabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
+        });
     }
 
     private static void EnablePack(string[] args)
@@ -169,10 +181,38 @@ public static class RHCommands
 
         pack.IsActive = true;
         RHLog.Player.Info("Reloading packs...");
-        ResourcePacksManager.ReloadPacks();
+        ResourcePacksManager.ReloadPacks(true, () =>
+        {
+            RHLog.Player.Info($"Enabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
+        });
         RHLog.Player.Info($"Enabled {pack.name} {'{'}{pack.guid}{'}'} successfully!");
     }
-
+    
+    private static void DisableAll(string[] args)
+    {
+        const string helpText = $"Usage: {DisableAllCommand}\nDisables all resource packs.";
+        
+        ResourcePacksManager.LoadedPacks.ForEach(p => p.IsActive = false);
+        
+        RHLog.Player.Info("Reloading packs...");
+        ResourcePacksManager.ReloadPacks(true, () =>
+        {
+            RHLog.Player.Info($"Disabled all packs successfully!");
+        });
+    }
+    private static void EnableAll(string[] args)
+    {
+        const string helpText = $"Usage: {EnableAllCommand}\nEnables all resource packs.";
+        
+        ResourcePacksManager.LoadedPacks.ForEach(p => p.IsActive = true);
+        
+        RHLog.Player.Info("Reloading packs...");
+        ResourcePacksManager.ReloadPacks(true, () =>
+        {
+            RHLog.Player.Info($"Enabled all packs successfully!");
+        });
+    }
+    
     private static void DumpAllToPack(string[] args)
     {
         if (args.Any(arg => arg.ToLower() == "help"))

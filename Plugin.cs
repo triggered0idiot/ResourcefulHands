@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -23,7 +24,7 @@ namespace ResourcefulHands;
 public class Plugin : BaseUnityPlugin
 {
     public const string GUID = "triggeredidiot.wkd.resourcefulhands";
-    public const string ModifiedStr = " [modified asset]";
+    public const string ModifiedStr = " [rh modified asset]";
 
     private static AssetBundle? _assets;
     public static AssetBundle? Assets
@@ -88,17 +89,16 @@ public class Plugin : BaseUnityPlugin
         
         foreach (var material in allMaterials)
         {
-            if (material != null)
-            {
-                if (material.HasTexture(mainTex))
-                    material.mainTexture = material.mainTexture;
-
-                // TODO: is a try catch necessary here?
-                try
-                { material.SetTexture(corruptTextureID, corruptTexture); }
-                catch (Exception e)
-                { RHLog.Error(e); }
-            }
+            if (material == null) continue;
+            
+            if (material.HasTexture(mainTex))
+                material.mainTexture = material.mainTexture;
+                
+            // TODO: is a try catch necessary here?
+            try
+            { material.SetTexture(corruptTextureID, corruptTexture); }
+            catch (Exception e)
+            { RHLog.Error(e); }
         }
 
         foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
@@ -109,11 +109,9 @@ public class Plugin : BaseUnityPlugin
     {
         // do some manipulation to the variables to trigger the harmony patches to replace them
         List<AudioSource> allAudioSources = Resources.FindObjectsOfTypeAll<AudioSource>().ToList();
-        
+
         foreach (var audioSource in allAudioSources)
-        { audioSource.clip = audioSource.clip; }
-        foreach (var audioSource in Object.FindObjectsOfType<AudioSource>(true))
-        { audioSource.clip = audioSource.clip; }
+            AudioSourcePatches.SwapClip(audioSource);
     }
 
     private IEnumerator LoadCustomSettings(UI_SettingsMenu settingsMenu)
@@ -142,7 +140,7 @@ public class Plugin : BaseUnityPlugin
                 
                 Button reloadButton = menu.transform.Find("Reload")
                     .GetComponentInChildren<Button>();
-                reloadButton.onClick.AddListener(ResourcePacksManager.ReloadPacks);
+                reloadButton.onClick.AddListener(() => ResourcePacksManager.ReloadPacks());
                 Button openFolder = menu.transform.Find("OpenFolder")
                     .GetComponentInChildren<Button>();
                 openFolder.onClick.AddListener(() => Application.OpenURL("file://" + RHConfig.PacksFolder.Replace("\\", "/")));
@@ -227,13 +225,59 @@ public class Plugin : BaseUnityPlugin
                 RHLog.Info("Loading internal assets...");
                 Assets?.LoadAllAssets();
 
-                RHLog.Debug("Hooking sprites to update...");
-                CoroutineDispatcher.AddToUpdate(() =>
+                if (RHConfig.UseOldSprReplace)
                 {
-                    var spriteRenderers = FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
-                    foreach (var sr in spriteRenderers) // TODO: forgive me for my sins
-                        sr.sprite = sr.sprite;
-                });
+                    RHLog.Info("Hooking sprite replacer...");
+                    CoroutineDispatcher.AddToUpdate(() =>
+                    {
+                        var spriteRenderers = FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+                        
+                        foreach (var sr in spriteRenderers)
+                            SpriteRendererPatches.Patch(sr);
+                    });
+                }
+                else // TODO: eventually improve this to edit animators or sum?
+                {
+                    RHLog.Info("Queuing sprite replacer...");
+                    CoroutineDispatcher.RunOnMainThread(() => //create isolated local context
+                    {
+                        var spriteRenderers = FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+                        float lastTick = Time.time;
+                        float tickSpace = 0.35f;
+                        
+                        Coroutine? c = null;
+                        void CreateCoroutine()
+                        {
+                            if (c != null)
+                                CoroutineDispatcher.StopDispatch(c);
+                            
+                            IEnumerator PollSpriteRenderers()
+                            {
+                                while (true)
+                                {
+                                    spriteRenderers = FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+                                    lastTick = Time.time;
+                                    yield return new WaitForSeconds(tickSpace);
+                                }
+                                // ReSharper disable once IteratorNeverReturns
+                            }
+                            c = CoroutineDispatcher.Dispatch(PollSpriteRenderers());
+                        }
+                        CreateCoroutine();
+                        
+                        CoroutineDispatcher.AddToUpdate(() =>
+                        {
+                            if (Time.time - lastTick > tickSpace * 32.0f)
+                            {
+                                RHLog.Warning("Sprite finder thread has been dead for a while, restarting...");
+                                CreateCoroutine();
+                            }
+                            
+                            foreach (var sr in spriteRenderers)
+                                SpriteRendererPatches.Patch(sr);
+                        });
+                    });
+                }
                 
                 RHLog.Info("Loading debug tools...");
                 DebugTools.Create();

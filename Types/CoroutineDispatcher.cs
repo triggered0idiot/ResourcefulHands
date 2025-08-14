@@ -14,7 +14,7 @@ public class CoroutineDispatcher : MonoBehaviour
     private static Dictionary<string, Action> updateActions = new Dictionary<string, Action>();
     public static Queue<Action> threadQueue = new Queue<Action>();
 
-    public static void Dispatch(IEnumerator routine)
+    public static Coroutine Dispatch(IEnumerator routine)
     {
         if (_instance == null)
         {
@@ -22,7 +22,17 @@ public class CoroutineDispatcher : MonoBehaviour
             DontDestroyOnLoad(_instance);
         }
         
-        _instance.StartCoroutine(routine);
+        return _instance.StartCoroutine(routine);
+    }
+    public static bool StopDispatch(Coroutine routine)
+    {
+        if (_instance == null)
+        {
+            return false;
+        }
+        
+        _instance.StopCoroutine(routine);
+        return true;
     }
 
     /// <summary>
