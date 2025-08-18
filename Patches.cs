@@ -37,10 +37,10 @@ public static class SpriteRendererPatches
         Sprite s = sr.sprite;
         if(s == null) return;
         dontPatch = true;
-        sr.sprite = GetSprite(s) ?? s;
+        sr.sprite = GetSprite(s, sr) ?? s;
     }
     
-    public static Sprite? GetSprite(Sprite sprite)
+    public static Sprite? GetSprite(Sprite sprite, SpriteRenderer? spriteRenderer = null)
     {
         if (sprite == null || sprite.texture == null)
             return sprite;
@@ -67,7 +67,7 @@ public static class SpriteRendererPatches
             }
         }
         
-        var texture = ResourcePacksManager.GetTextureFromPacks(textureCacheName);
+        var texture = ResourcePacksManager.GetTextureFromPacks(textureCacheName, spriteRenderer);
         if (texture == null)
             return cachedSprite ?? sprite;
         
@@ -106,7 +106,7 @@ public static class SpriteRendererPatches
         if (dontPatch)
         { dontPatch = false; return; }
         
-        __result = GetSprite(__result)!;
+        __result = GetSprite(__result, __instance)!;
         dontPatch = true;
         __instance.sprite = __result;
     }
@@ -118,7 +118,7 @@ public static class SpriteRendererPatches
         if (dontPatch)
         { dontPatch = false; return; }
         
-        value = GetSprite(value)!;
+        value = GetSprite(value, __instance)!;
         dontPatch = true;
         __instance.sprite = value;
     }

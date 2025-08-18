@@ -21,12 +21,16 @@ Additionally, ResourcefulHands comes with built in commands to use if you prefer
   - enablepack -> Enables a pack's contents.
   - disablepack -> Disables a pack's contents.
   - rhtoggledebug -> toggles a menu at the top left that shows playing sounds
+  - assignhandpack -> Assigns a texture pack to a specific hand (left/right)
+  - clearhandpack -> Clears a hand's assigned texture pack
+  - listhandpacks -> Shows current hand texture pack assignments 
 
 ## Resource Pack Structure
 --> Textures/<br>
 any .png or .jpg file with the same name as an ingame texture will replace it<br>
 currently the custom texture should try to be in the same format as the original texture or else it may not work correctly<br>
 <sub><sup> *currently the mass has special properties, to edit its texture use DeathFloor_02 for the mass and _CORRUPTTEXTURE for the effect it does* </sup></sub><br>
+for hand-specific textures, prefix files with Left_ or Right_ (e.g., Left_Hands_Sprite_library.png)<br>
 
 --> Sounds/<br>
 any .mp3, .wav or .ogg file with the same name as an ingame sound will replace it<br>
