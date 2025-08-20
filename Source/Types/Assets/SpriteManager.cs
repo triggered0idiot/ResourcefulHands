@@ -25,6 +25,19 @@ public class SpriteManager
             ResourcePacksManager.AddTextureOverride(lrPrefix + spriteName, spriteName, packId);
     }
     
+    public static void ClearHandsOverride(string lrPrefix = "")
+    {
+        foreach (var spriteName in HandSpriteNames)
+            ResourcePacksManager.RemoveTextureOverride(lrPrefix + spriteName);
+    }
+    
+    public static string GetHandsOverride(string lrPrefix = "")
+    {
+        foreach (var spriteName in HandSpriteNames)
+            return ResourcePacksManager.GetTextureOverride(lrPrefix + spriteName)?.Item2 ?? string.Empty;
+        return string.Empty;
+    }
+    
     /// Returns if the given sprite is a sprite for the player's hands
     public static bool IsHandSprite(Sprite sprite)
     {

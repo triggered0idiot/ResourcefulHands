@@ -554,6 +554,10 @@ public static class RHCommands
             return;
         }
         
+        SpriteManager.ClearHandsOverride(SpriteManager.GetHandPrefix(handId));
+        
+        // Force refresh of sprites
+        SpriteManager.ClearHandSprites();
         string handName = handId == 0 ? "left" : "right";
         RHLog.Player.Info($"Cleared texture pack from {handName} hand");
     }
@@ -565,7 +569,7 @@ public static class RHCommands
         for (int i = 0; i < 2; i++)
         {
             string handName = i == 0 ? "Left" : "Right";
-            string packGuid = "HandTextureManager.GetHandTexturePackGuid(i)";
+            string packGuid = SpriteManager.GetHandsOverride(SpriteManager.GetHandPrefix(i));
             
             if (string.IsNullOrEmpty(packGuid))
             {

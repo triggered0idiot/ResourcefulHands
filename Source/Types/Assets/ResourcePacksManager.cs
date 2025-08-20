@@ -60,7 +60,7 @@ public static class ResourcePacksManager
         return false;
     }
     
-    // mapping of [texture name] -> [pack to pull, texture]
+    // mapping of [texture name] -> [texture, pack to pull]
     private static Dictionary<string, Tuple<string, string>> _textureOverrides = new Dictionary<string, Tuple<string, string>>();
     
     /// Adds or replaces a texture override
@@ -72,6 +72,11 @@ public static class ResourcePacksManager
     public static void RemoveTextureOverride(string textureName)
     {
         _textureOverrides.Remove(textureName);
+    }
+
+    public static Tuple<string, string>? GetTextureOverride(string textureName)
+    {
+        return _textureOverrides.GetValueOrDefault(textureName);
     }
     
     public static Texture2D? GetTextureFromPacks(string textureName, bool nullOnFail = false)
