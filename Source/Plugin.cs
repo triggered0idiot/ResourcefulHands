@@ -20,7 +20,7 @@ namespace ResourcefulHands;
 
 // TODO: test for/fix crash when quitting game (unsure but this has happened at-least twice, possible due to the use of DebugTools.cs?)
 
-[BepInPlugin(GUID, "Resourceful Hands", "0.9.61")] // Resourceful Hands
+[BepInPlugin(GUID, "Resourceful Hands", "0.9.70")] // Resourceful Hands
 public class Plugin : BaseUnityPlugin
 {
     public const string GUID = "triggeredidiot.wkd.resourcefulhands";

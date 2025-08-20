@@ -16,9 +16,6 @@ public static class RHConfig
     // Use old sprite replacer
     private static ConfigEntry<bool>? useOldSpr = null;
     public static bool UseOldSprReplace => useOldSpr?.Value ?? false;
-    // should left hands use items from that pack too
-    private static ConfigEntry<bool>? lrItems = null;
-    public static bool UseLRItems => lrItems?.Value ?? false;
     
     // --- DEBUG STUFF ---
     // Colored console
@@ -122,13 +119,6 @@ public static class RHConfig
             $"A new sprite replacer (the thing that lets you have custom hands) has been added, hopefully this should improve performance. However, if you do have issues with this new replacer, turn this on to disable it."
         );
         RHLog.Debug("Bound useOldSpr");
-        lrItems = Plugin.Instance.Config.Bind(
-            "General",
-            "Items use left/right hands",
-            true,
-            $"When a resource pack is bound to a left/right hand, should items in that hand also use the item from that resource pack (if it has one)."
-        );
-        RHLog.Debug("Bound lrItems");
         
         // Debugging
         colorConsole = Plugin.Instance.Config.Bind(
