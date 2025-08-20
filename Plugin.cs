@@ -195,7 +195,8 @@ public class Plugin : BaseUnityPlugin
             RHLog.Error("Failed to load custom settings menu:\n"+e.ToString());
         }
     }
-    
+
+    internal static int targetFps = 60;
     public static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     public static bool IsMainThread => System.Threading.Thread.CurrentThread.ManagedThreadId == mainThreadId;
     internal static int mainThreadId;
@@ -218,6 +219,7 @@ public class Plugin : BaseUnityPlugin
         bool hasLoadedIntro = false;
         SceneManager.sceneLoaded += (scene, mode) =>
         {
+            targetFps = Application.targetFrameRate;
             RHLog.Debug("Evaluating newly loaded scene...");
             if(!scene.name.ToLower().Contains("intro") && !hasLoadedIntro)
             {

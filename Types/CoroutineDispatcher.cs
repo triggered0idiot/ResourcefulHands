@@ -14,8 +14,18 @@ public class CoroutineDispatcher : MonoBehaviour
     private static Dictionary<string, Action> updateActions = new Dictionary<string, Action>();
     public static Queue<Action> threadQueue = new Queue<Action>();
 
-    public static Coroutine Dispatch(IEnumerator routine)
+    // WARNING: returns nill if not main thread
+    public static Coroutine? Dispatch(IEnumerator routine)
     {
+        if (!Plugin.IsMainThread)
+        {
+            CoroutineDispatcher.RunOnMainThread(() =>
+            {
+                Dispatch(routine);
+            });
+            return null;
+        }
+
         if (_instance == null)
         {
             _instance = new GameObject("CoroutineDispatcher").AddComponent<CoroutineDispatcher>();
@@ -24,8 +34,19 @@ public class CoroutineDispatcher : MonoBehaviour
         
         return _instance.StartCoroutine(routine);
     }
+    
+    // WARNING: returns false if not main thread
     public static bool StopDispatch(Coroutine routine)
     {
+        if (!Plugin.IsMainThread)
+        {
+            CoroutineDispatcher.RunOnMainThread(() =>
+            {
+                StopDispatch(routine);
+            });
+            return false;
+        }
+
         if (_instance == null)
         {
             return false;
@@ -56,7 +77,7 @@ public class CoroutineDispatcher : MonoBehaviour
             hasRan = true;
         });
 
-        int fps = Mathf.Clamp(Application.targetFrameRate, -1, 120);
+        int fps = Mathf.Clamp(Plugin.targetFps, -1, 120);
         if (fps < 1) fps = 60;
         
         // wait at around the speed of the current fps

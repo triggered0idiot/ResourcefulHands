@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -9,6 +10,7 @@ using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
 using Object = UnityEngine.Object;
+using Random = System.Random;
 
 namespace ResourcefulHands;
 
@@ -292,12 +294,12 @@ public class TexturePack
         RHLog.Info($"Loaded {soundTasks.Count} sounds for {pack.guid}!");
     }
     
+    // ive tweaked this because for some reason unity decided to randomly remember
+    // that it isn't thread safe and all of this code stopped working
     private static async Task LoadSound(string filepath, TexturePack pack)
     {
-        var clipName = Path.GetFileNameWithoutExtension(filepath);
         var type = Path.GetExtension(filepath)[1..]; // This also returns a dot for some reason
         
-        AudioClip? audioClip = null;
         var audioType = type.ToLower() switch
         {
             "wav" => AudioType.WAV,
@@ -315,31 +317,45 @@ public class TexturePack
             return;
         }
 
-        var uwr = new UnityWebRequest(filepath, UnityWebRequest.kHttpVerbGET)
+        var rand = new Random();
+
+        // wait a random amount so all sounds don't get loaded at once
+        await Task.Delay(rand.Next(100, 300));
+        
+        CoroutineDispatcher.Dispatch(LoadSoundRoutine(filepath, pack, audioType));
+    }
+
+    private static IEnumerator LoadSoundRoutine(string filepath, TexturePack pack, AudioType audioType)
+    {
+        var clipName = Path.GetFileNameWithoutExtension(filepath);
+        AudioClip? audioClip = null;
+        
+        UnityWebRequest? uwr = null;
+        DownloadHandlerAudioClip? dh = null;
+        
+        uwr = new UnityWebRequest(filepath, UnityWebRequest.kHttpVerbGET)
         {
             downloadHandler = new DownloadHandlerAudioClip(filepath, audioType)
         };
-        var dh = (DownloadHandlerAudioClip)uwr.downloadHandler;
+        dh = (DownloadHandlerAudioClip)uwr.downloadHandler;
         dh.streamAudio = false;
         dh.compressed = true;
         
-        uwr.SendWebRequest();
-
+        yield return uwr.SendWebRequest();
+        
         try
         {
-            while (!uwr.isDone) await Task.Delay(5);
-
             if (uwr.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError || dh.audioClip == null)
                 RHLog.Error($"Error while loading {clipName} [at: {filepath}]");
             else
                 audioClip = dh.audioClip;
         }
-        catch
+        catch(Exception e)
         {
-            RHLog.Error($"Error while loading {clipName} [at: {filepath}]");
+            RHLog.Error($"Error while loading {clipName} [at: {filepath}]\n" + e.Message);
         }
 
-        if (audioClip == null) return;
+        if (audioClip == null) yield break;
         
         pack.RawSounds.Add(audioClip);
         
@@ -349,5 +365,5 @@ public class TexturePack
             if (!pack.Sounds.TryAdd(clipName, audioClip))
                 RHLog.Error($"Failed to add {clipName} because sound of that name already exists in the same pack! [at: {filepath}]");
         }
-    }
+    } 
 }
