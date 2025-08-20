@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using ResourcefulHands.Patches;
+using ResourcefulHands.Types;
 
 namespace ResourcefulHands;
 
@@ -30,6 +32,9 @@ public static class RHCommands
     public const string DisableAllCommand = "disablepack_all";
 
     public const string ToggleDebug = "rhtoggledebug";
+    public const string AssignHandPack = "assignhandpack";
+    public const string ClearHandPack = "clearhandpack";
+    public const string ListHandPacks = "listhandpacks";
 
     public static void RefreshCommands()
     {
@@ -55,6 +60,9 @@ public static class RHCommands
         ccInst.RegisterCommand(EnableAllCommand, EnableAll, false);
         ccInst.RegisterCommand(DisableAllCommand, DisableAll, false);
         ccInst.RegisterCommand(ToggleDebug, (args) => { DebugTools.isOn = !DebugTools.isOn; }, false);
+        ccInst.RegisterCommand(AssignHandPack, AssignHandTexturePack, false);
+        ccInst.RegisterCommand(ClearHandPack, ClearHandTexturePack, false);
+        ccInst.RegisterCommand(ListHandPacks, ListHandTexturePacks, false);
     }
     
     private static void MovePacks(string[] args)
@@ -491,5 +499,97 @@ public static class RHCommands
         RHLog.Player.Info($"Successfully saved {savedSprites} of {spriteTexturesAmnt} sprite textures!");
         RHLog.Player.Info($"Successfully saved {savedSounds} of {soundsAmnt} sounds!");
         RHLog.Player.Info($"Packed all assets to '{path}'");
+    }
+    
+    private static void AssignHandTexturePack(string[] args)
+    {
+        const string helpText = $"Usage: {AssignHandPack} [hand] [pack_guid]\nHand: left or right (case insensitive)\nUse 'listpacks' to see available pack GUIDs";
+        
+        if (args.Length != 2)
+        {
+            RHLog.Player.Error("Invalid number of arguments!");
+            RHLog.Player.Info(helpText);
+            return;
+        }
+        
+        int handId = GetHandIdFromString(args[0]);
+        if (handId < 0)
+        {
+            RHLog.Player.Error("Invalid hand! Must be 'left' or 'right'");
+            RHLog.Player.Info(helpText);
+            return;
+        }
+        
+        string packGuid = args[1];
+        HandTextureManager.AssignTexturePackToHand(handId, packGuid);
+        
+        // Force refresh of sprites
+        SpriteRendererPatches._customSpriteCache.Clear();
+        string handName = handId == 0 ? "left" : "right";
+        RHLog.Player.Info($"Assigned texture pack '{packGuid}' to {handName} hand");
+    }
+    
+    private static void ClearHandTexturePack(string[] args)
+    {
+        const string helpText = $"Usage: {ClearHandPack} [hand]\nHand: left or right (case insensitive)";
+        
+        if (args.Length != 1)
+        {
+            RHLog.Player.Error("Invalid number of arguments!");
+            RHLog.Player.Info(helpText);
+            return;
+        }
+        
+        int handId = GetHandIdFromString(args[0]);
+        if (handId < 0)
+        {
+            RHLog.Player.Error("Invalid hand! Must be 'left' or 'right'");
+            RHLog.Player.Info(helpText);
+            return;
+        }
+        
+        HandTextureManager.AssignTexturePackToHand(handId, "");
+        string handName = handId == 0 ? "left" : "right";
+        RHLog.Player.Info($"Cleared texture pack from {handName} hand");
+    }
+    
+    private static void ListHandTexturePacks(string[] args)
+    {
+        RHLog.Player.Info("Hand Texture Pack Assignments:");
+        
+        for (int i = 0; i < 2; i++)
+        {
+            string handName = i == 0 ? "Left" : "Right";
+            string packGuid = HandTextureManager.GetHandTexturePackGuid(i);
+            
+            if (string.IsNullOrEmpty(packGuid))
+            {
+                RHLog.Player.Info($"{handName} Hand: No custom pack assigned");
+            }
+            else
+            {
+                var pack = ResourcePacksManager.LoadedPacks.FirstOrDefault(p => p.guid == packGuid);
+                string packName = pack?.name ?? "Unknown Pack";
+                RHLog.Player.Info($"{handName} Hand: {packName} ({packGuid})");
+            }
+        }
+        
+        RHLog.Player.Info("Use 'assignhandpack [hand] [pack_guid]' to assign a pack");
+        RHLog.Player.Info("Use 'clearhandpack [hand]' to clear a hand's pack");
+    }
+    
+    private static int GetHandIdFromString(string handString)
+    {
+        if (string.IsNullOrEmpty(handString))
+            return -1;
+            
+        string normalized = handString.Trim().ToLowerInvariant();
+        
+        if (normalized == "left" || normalized == "l")
+            return 0;
+        if (normalized == "right" || normalized == "r")
+            return 1;
+            
+        return -1;
     }
 }

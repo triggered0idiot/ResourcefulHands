@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using BepInEx;
 using HarmonyLib;
 using Newtonsoft.Json;
+using ResourcefulHands.Types;
 using UnityEngine;
 
 namespace ResourcefulHands;
@@ -39,7 +40,7 @@ public static class ResourcePacksManager
     public static TexturePack[] ActivePacks => (LoadedPacks ?? []).Where(pack => pack is { IsActive: true }).ToArray();
     public static bool HasPacksChanged = true;
 
-    public static Texture2D? GetTextureFromPacks(string textureName)
+    public static Texture2D? GetTextureFromPacks(string textureName, SpriteRenderer? spriteRenderer = null)
     {
         if (isReloading)
         {
@@ -47,6 +48,23 @@ public static class ResourcePacksManager
             return originalTexture ? originalTexture : null;
         }
         
+         // Check if this is a hand sprite and if it has a custom texture pack
+           if (spriteRenderer != null && IsHandSprite(spriteRenderer))
+           {
+               var handTexture = GetHandTexture(spriteRenderer, textureName);
+               if (handTexture != null)
+                   return handTexture;
+           }
+           
+           // Check for Left_/Right_ prefixed textures and then put it on the correct hand
+           if (spriteRenderer != null && IsHandSprite(spriteRenderer))
+           {
+               var prefixedTexture = GetHandSpecificPrefixedTexture(spriteRenderer, textureName);
+               if (prefixedTexture != null)
+                   return prefixedTexture;
+           }
+        
+        // Fall back to regular texture pack system
         Texture2D? texture = null;
         foreach (var pack in ActivePacks)
         {
@@ -64,6 +82,97 @@ public static class ResourcePacksManager
         
         return null;
     }
+    
+    private static bool IsHandSprite(SpriteRenderer spriteRenderer)
+    {
+        // Check if the sprite renderer is part of a player's hand
+        Transform current = spriteRenderer.transform;
+        while (current != null)
+        {
+            var player = current.GetComponent<ENT_Player>();
+            if (player != null)
+            {
+                return player.hands.Any(h => h?.handSprite == spriteRenderer);
+            }
+            current = current.parent;
+        }
+        return false;
+    }
+    
+    private static Texture2D? GetHandTexture(SpriteRenderer spriteRenderer, string textureName)
+    {
+        Transform current = spriteRenderer.transform;
+        while (current != null)
+        {
+            var player = current.GetComponent<ENT_Player>();
+            if (player != null)
+            {
+                for (int i = 0; i < player.hands.Length; i++)
+                {
+                    var hand = player.hands[i];
+                    if (hand?.handSprite == spriteRenderer)
+                    {
+                        // Check if this hand has a custom texture pack
+                        if (HandTextureManager.HasCustomTexturePack(i))
+                        {
+                            string packGuid = HandTextureManager.GetHandTexturePackGuid(i);
+                            var pack = LoadedPacks.FirstOrDefault(p => p.guid == packGuid);
+                            if (pack != null)
+                            {
+                                var handTexture = pack.GetTexture(textureName);
+                                if (handTexture != null)
+                                {
+                                    RHLog.Debug($"Found texture '{textureName}' for hand {i} in pack '{pack.name}'");
+                                    return handTexture;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+    
+    private static Texture2D? GetHandSpecificPrefixedTexture(SpriteRenderer spriteRenderer, string textureName)
+    {
+        Transform current = spriteRenderer.transform;
+        while (current != null)
+        {
+            var player = current.GetComponent<ENT_Player>();
+            if (player != null)
+            {
+                for (int i = 0; i < player.hands.Length; i++)
+                {
+                    var hand = player.hands[i];
+                    if (hand?.handSprite == spriteRenderer)
+                    {
+                        string handPrefix = i == 0 ? "Left_" : "Right_";
+                        string prefixedTextureName = handPrefix + textureName;
+                        
+                        // Look for the prefixed texture in active packs
+                        foreach (var pack in ActivePacks)
+                        {
+                            var prefixedTexture = pack.GetTexture(prefixedTextureName);
+                            if (prefixedTexture != null)
+                            {
+                                RHLog.Debug($"Found prefixed texture '{prefixedTextureName}' for hand {i} in pack '{pack.name}'");
+                                return prefixedTexture;
+                            }
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+    
     public static AudioClip? GetSoundFromPacks(string soundName)
     {
         if (isReloading)
