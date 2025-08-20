@@ -528,6 +528,8 @@ public static class RHCommands
         }
 
         SpriteManager.OverrideHands(pack.guid, SpriteManager.GetHandPrefix(handId));
+        if (handId == 0) RHConfig.PackPrefs.LeftHandPack = pack.guid;
+        else RHConfig.PackPrefs.RightHandPack = pack.guid;
         
         // Force refresh of sprites
         SpriteManager.ClearHandSprites();
@@ -555,6 +557,8 @@ public static class RHCommands
         }
         
         SpriteManager.ClearHandsOverride(SpriteManager.GetHandPrefix(handId));
+        if (handId == 0) RHConfig.PackPrefs.LeftHandPack = "";
+        else RHConfig.PackPrefs.RightHandPack = "";
         
         // Force refresh of sprites
         SpriteManager.ClearHandSprites();
@@ -572,9 +576,7 @@ public static class RHCommands
             string packGuid = SpriteManager.GetHandsOverride(SpriteManager.GetHandPrefix(i));
             
             if (string.IsNullOrEmpty(packGuid))
-            {
                 RHLog.Player.Info($"{handName} Hand: No custom pack assigned");
-            }
             else
             {
                 var pack = ResourcePacksManager.LoadedPacks.FirstOrDefault(p => p.guid == packGuid);
@@ -583,7 +585,7 @@ public static class RHCommands
             }
         }
         
-        RHLog.Player.Info("Use 'assignhandpack [hand] [pack_guid]' to assign a pack");
+        RHLog.Player.Info("Use 'assignhandpack [hand] [pack guid/pack index]' to assign a pack");
         RHLog.Player.Info("Use 'clearhandpack [hand]' to clear a hand's pack");
     }
     

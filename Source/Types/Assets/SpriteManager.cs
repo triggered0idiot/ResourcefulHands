@@ -104,6 +104,7 @@ public class SpriteManager
     
     /// Takes a given sprite renderer and returns the replaced version
     /// This function is used for additional context, such as left and right hands
+    /// TODO: fix spam cache bug with custom Right_ textures NOT command ones, they don't seem to be affected
     public static Sprite? GetReplacementSpriteForRenderer(SpriteRenderer spriteRenderer)
     {
         Sprite s = spriteRenderer.sprite;

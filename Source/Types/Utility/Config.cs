@@ -39,6 +39,10 @@ public static class RHConfig
             public string[] disabledPacks = [];
             [JsonProperty(NullValueHandling=NullValueHandling.Include)]
             public string[] packOrder = [];
+            [JsonProperty(NullValueHandling=NullValueHandling.Include)]
+            public string leftHandPack = string.Empty;
+            [JsonProperty(NullValueHandling=NullValueHandling.Include)]
+            public string rightHandPack = string.Empty;
             
             public static PrefsObject? FromJson(string json) => JsonConvert.DeserializeObject<PrefsObject>(json);
             public string ToJson() => JsonConvert.SerializeObject(this);
@@ -46,6 +50,8 @@ public static class RHConfig
         
         public static string[] DisabledPacks = [];
         public static string[] PackOrder = [];
+        public static string LeftHandPack = string.Empty;
+        public static string RightHandPack = string.Empty;
 
         internal static string GetFile()
         {
@@ -63,6 +69,14 @@ public static class RHConfig
             PrefsObject prefs = PrefsObject.FromJson(File.ReadAllText(path)) ?? new PrefsObject();
             DisabledPacks = prefs.disabledPacks;
             PackOrder = prefs.packOrder;
+            LeftHandPack = prefs.leftHandPack;
+            RightHandPack = prefs.rightHandPack;
+            
+            // TODO: quick fix, ill replace it later
+            if (!string.IsNullOrEmpty(LeftHandPack))
+                SpriteManager.OverrideHands(LeftHandPack, SpriteManager.GetHandPrefix(0));
+            if (!string.IsNullOrEmpty(RightHandPack))
+                SpriteManager.OverrideHands(RightHandPack, SpriteManager.GetHandPrefix(1));
         }
 
         public static void Save()
@@ -72,7 +86,9 @@ public static class RHConfig
             PrefsObject prefs = new PrefsObject
             {
                 disabledPacks = DisabledPacks,
-                packOrder = PackOrder
+                packOrder = PackOrder,
+                leftHandPack = LeftHandPack,
+                rightHandPack = RightHandPack
             };
             
             File.WriteAllText(path, prefs.ToJson());
