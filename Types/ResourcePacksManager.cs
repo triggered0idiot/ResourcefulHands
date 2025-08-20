@@ -111,6 +111,8 @@ public static class ResourcePacksManager
     
     internal static void SaveDisabledPacks()
     {
+        if (ResourcePacksManager.isReloading) return;
+
         List<string> disabledPacks = [];
         foreach (var pack in LoadedPacks)
         {
@@ -122,6 +124,8 @@ public static class ResourcePacksManager
     }
     internal static void LoadDisabledPacks()
     {
+        if (ResourcePacksManager.isReloading) return;
+
         RHConfig.PackPrefs.Load();
         string[] disabledPacks = RHConfig.PackPrefs.DisabledPacks;
         if(disabledPacks.Length == 0) return;
@@ -136,6 +140,8 @@ public static class ResourcePacksManager
     
     internal static void SavePackOrder()
     {
+        if (ResourcePacksManager.isReloading) return;
+        
         string[] currentPacksState = new string[LoadedPacks.Count];
         for (int i = 0; i < LoadedPacks.Count; i++)
         {
@@ -148,6 +154,8 @@ public static class ResourcePacksManager
     }
     internal static void LoadPackOrder()
     {
+        if (ResourcePacksManager.isReloading) return;
+
         RHConfig.PackPrefs.Load();
         string[] previousPacksState = RHConfig.PackPrefs.PackOrder;
             
@@ -213,7 +221,6 @@ public static class ResourcePacksManager
     internal static async Task ReloadPacks_Internal()
     {
         if (isReloading) return;
-        isReloading = true;
         
         HasPacksChanged = false;
         if (LoadedPacks.Count != 0)
@@ -221,6 +228,8 @@ public static class ResourcePacksManager
             RHLog.Debug("Saving packs before reloading!");
             Save();
         }
+        
+        isReloading = true;
         LoadedPacks.Clear();
         RHLog.Info($"Expanding zips in {RHConfig.PacksFolder}...");
         string[] zipPaths = Directory.GetFiles(RHConfig.PacksFolder, "*.zip", SearchOption.TopDirectoryOnly);
@@ -290,6 +299,8 @@ public static class ResourcePacksManager
 
         await CoroutineDispatcher.RunOnMainThreadAndWait(() =>
         {
+            isReloading = false; // no longer reloading texture packs, we can load and save orders,ect
+            
             RHLog.Info("Re-ordering to user order...");
             LoadPackOrder();
             RHLog.Info("Disabling packs that should be disabled...");
@@ -303,7 +314,5 @@ public static class ResourcePacksManager
             if (UI_RHPacksList.Instance != null)
                 UI_RHPacksList.Instance?.BuildList();
         });
-
-        isReloading = false;
     }
 }
