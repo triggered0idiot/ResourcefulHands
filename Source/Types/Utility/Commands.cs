@@ -6,7 +6,6 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using ResourcefulHands.Patches;
-using ResourcefulHands.Types;
 
 namespace ResourcefulHands;
 
@@ -60,9 +59,9 @@ public static class RHCommands
         ccInst.RegisterCommand(EnableAllCommand, EnableAll, false);
         ccInst.RegisterCommand(DisableAllCommand, DisableAll, false);
         ccInst.RegisterCommand(ToggleDebug, (args) => { DebugTools.isOn = !DebugTools.isOn; }, false);
-        ccInst.RegisterCommand(AssignHandPack, AssignHandTexturePack, false);
-        ccInst.RegisterCommand(ClearHandPack, ClearHandTexturePack, false);
-        ccInst.RegisterCommand(ListHandPacks, ListHandTexturePacks, false);
+        ccInst.RegisterCommand(AssignHandPack, AssignHandResourcePack, false);
+        ccInst.RegisterCommand(ClearHandPack, ClearHandResourcePack, false);
+        ccInst.RegisterCommand(ListHandPacks, ListHandResourcePack, false);
     }
     
     private static void MovePacks(string[] args)
@@ -76,7 +75,7 @@ public static class RHCommands
             return;
         }
 
-        TexturePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
+        ResourcePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
         if (pack == null)
         {
             RHLog.Player.Info(helpText);
@@ -119,7 +118,7 @@ public static class RHCommands
         });
     }
 
-    private static TexturePack? GetPackFromArgs(string[] args, Action<string> logErr, int indexOverride = 0)
+    private static ResourcePack? GetPackFromArgs(string[] args, Action<string> logErr, int indexOverride = 0)
     {
         string ordinal = "first";
         if (indexOverride != 0)
@@ -131,7 +130,7 @@ public static class RHCommands
         }
         
         string packName;
-        TexturePack? pack = null;
+        ResourcePack? pack = null;
         if (int.TryParse(args[indexOverride], out int index))
         {
             if (index < 0 || index >= ResourcePacksManager.LoadedPacks.Count)
@@ -162,7 +161,7 @@ public static class RHCommands
     private static void DisablePack(string[] args)
     {
         const string helpText = $"Usage: {DisableCommand} [pack guid/pack index]\nDisables a resource pack.";
-        TexturePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
+        ResourcePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
         if (pack == null)
         {
             RHLog.Player.Info(helpText);
@@ -180,7 +179,7 @@ public static class RHCommands
     private static void EnablePack(string[] args)
     {
         const string helpText = $"Usage: {EnableCommand} [pack guid/pack index]\nEnables a resource pack.";
-        TexturePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
+        ResourcePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
         if (pack == null)
         {
             RHLog.Player.Info(helpText);
@@ -489,7 +488,7 @@ public static class RHCommands
 
         RHLog.Player.Info($"Writing data files");
         // template json
-        File.WriteAllText(Path.Combine(path, "info.json"), TexturePack.DefaultJson);
+        File.WriteAllText(Path.Combine(path, "info.json"), ResourcePack.DefaultJson);
         // export info
         File.WriteAllText(Path.Combine(path, "textures_list.txt"), textureInfo.ToString());
         File.WriteAllText(Path.Combine(path, "sprite_textures_list.txt"), spriteTextureInfo.ToString());
@@ -501,9 +500,9 @@ public static class RHCommands
         RHLog.Player.Info($"Packed all assets to '{path}'");
     }
     
-    private static void AssignHandTexturePack(string[] args)
+    private static void AssignHandResourcePack(string[] args)
     {
-        const string helpText = $"Usage: {AssignHandPack} [hand] [pack_guid]\nHand: left or right (case insensitive)\nUse 'listpacks' to see available pack GUIDs";
+        const string helpText = $"Usage: {AssignHandPack} [hand] [pack guid/pack index]\nHand: left or right (case insensitive)\nUse 'listpacks' to see available pack GUIDs";
         
         if (args.Length != 2)
         {
@@ -520,16 +519,23 @@ public static class RHCommands
             return;
         }
         
-        string packGuid = args[1];
-        HandTextureManager.AssignTexturePackToHand(handId, packGuid);
+        ResourcePack? pack = GetPackFromArgs(args, RHLog.Player.Error, 1);
+        if (pack == null)
+        {
+            RHLog.Player.Error("Invalid pack!");
+            RHLog.Player.Info(helpText);
+            return;
+        }
+
+        SpriteManager.OverrideHands(pack.guid, SpriteManager.GetHandPrefix(handId));
         
         // Force refresh of sprites
-        SpriteRendererPatches._customSpriteCache.Clear();
+        SpriteManager.ClearHandSprites();
         string handName = handId == 0 ? "left" : "right";
-        RHLog.Player.Info($"Assigned texture pack '{packGuid}' to {handName} hand");
+        RHLog.Player.Info($"Assigned texture pack '{pack.guid}' to {handName} hand");
     }
     
-    private static void ClearHandTexturePack(string[] args)
+    private static void ClearHandResourcePack(string[] args)
     {
         const string helpText = $"Usage: {ClearHandPack} [hand]\nHand: left or right (case insensitive)";
         
@@ -548,19 +554,18 @@ public static class RHCommands
             return;
         }
         
-        HandTextureManager.AssignTexturePackToHand(handId, "");
         string handName = handId == 0 ? "left" : "right";
         RHLog.Player.Info($"Cleared texture pack from {handName} hand");
     }
     
-    private static void ListHandTexturePacks(string[] args)
+    private static void ListHandResourcePack(string[] args)
     {
         RHLog.Player.Info("Hand Texture Pack Assignments:");
         
         for (int i = 0; i < 2; i++)
         {
             string handName = i == 0 ? "Left" : "Right";
-            string packGuid = HandTextureManager.GetHandTexturePackGuid(i);
+            string packGuid = "HandTextureManager.GetHandTexturePackGuid(i)";
             
             if (string.IsNullOrEmpty(packGuid))
             {

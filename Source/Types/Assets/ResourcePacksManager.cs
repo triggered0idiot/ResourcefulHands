@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using BepInEx;
 using HarmonyLib;
 using Newtonsoft.Json;
-using ResourcefulHands.Types;
 using UnityEngine;
 
 namespace ResourcefulHands;
@@ -36,140 +35,83 @@ public static class ResourcePacksManager
 {
     public static bool IsUsingRHPacksFolder => LoadedPacks.Exists(p => p.IsConfigFolderPack);
     
-    public static List<TexturePack> LoadedPacks { get; internal set; } = [];
-    public static TexturePack[] ActivePacks => (LoadedPacks ?? []).Where(pack => pack is { IsActive: true }).ToArray();
+    public static List<ResourcePack> LoadedPacks { get; internal set; } = [];
+    public static ResourcePack[] ActivePacks => (LoadedPacks ?? []).Where(pack => pack is { IsActive: true }).ToArray();
     public static bool HasPacksChanged = true;
 
-    public static Texture2D? GetTextureFromPacks(string textureName, SpriteRenderer? spriteRenderer = null)
+    public static ResourcePack? GetPackWithID(string id)
+    {
+        foreach (var pack in LoadedPacks)
+        {
+            if (pack.guid == id)
+                return pack;
+        }
+
+        return null;
+    }
+    public static bool IsPackEnabledWithID(string id)
+    {
+        foreach (var pack in ActivePacks)
+        {
+            if (pack.guid == id)
+                return true;
+        }
+
+        return false;
+    }
+    
+    // mapping of [texture name] -> [pack to pull, texture]
+    private static Dictionary<string, Tuple<string, string>> _textureOverrides = new Dictionary<string, Tuple<string, string>>();
+    
+    /// Adds or replaces a texture override
+    public static void AddTextureOverride(string originalTextureName, string newTextureName, string packId)
+    {
+        _textureOverrides[originalTextureName] = Tuple.Create(newTextureName, packId);
+    }
+    /// Removes a texture override
+    public static void RemoveTextureOverride(string textureName)
+    {
+        _textureOverrides.Remove(textureName);
+    }
+    
+    public static Texture2D? GetTextureFromPacks(string textureName, bool nullOnFail = false)
     {
         if (isReloading)
         {
+            if (nullOnFail) return null;
             var originalTexture = OriginalAssetTracker.GetTexture(textureName);
             return originalTexture ? originalTexture : null;
         }
         
-         // Check if this is a hand sprite and if it has a custom texture pack
-           if (spriteRenderer != null && IsHandSprite(spriteRenderer))
-           {
-               var handTexture = GetHandTexture(spriteRenderer, textureName);
-               if (handTexture != null)
-                   return handTexture;
-           }
-           
-           // Check for Left_/Right_ prefixed textures and then put it on the correct hand
-           if (spriteRenderer != null && IsHandSprite(spriteRenderer))
-           {
-               var prefixedTexture = GetHandSpecificPrefixedTexture(spriteRenderer, textureName);
-               if (prefixedTexture != null)
-                   return prefixedTexture;
-           }
-        
-        // Fall back to regular texture pack system
         Texture2D? texture = null;
-        foreach (var pack in ActivePacks)
+
+        if (_textureOverrides.TryGetValue(textureName, out var replacementInfo) && IsPackEnabledWithID(replacementInfo.Item2))
         {
-            var myTexture = pack.GetTexture(textureName);
-            if(myTexture != null)
-                texture = myTexture;
+            ResourcePack? pack = GetPackWithID(replacementInfo.Item2);
+            if (pack != null)
+            {
+                texture = pack.GetTexture(replacementInfo.Item1);
+            }
+        }
+
+        if (texture == null)
+        {
+            foreach (var pack in ActivePacks)
+            {
+                var myTexture = pack.GetTexture(textureName);
+                if(myTexture != null)
+                    texture = myTexture;
+            }
         }
 
         var og = OriginalAssetTracker.GetTexture(textureName);
         if (texture) return texture;
+        if (nullOnFail) return null;
         if (og) return og; // fallback
         
         if (textureName is "DeathFloor_02" or "_CORRUPTTEXTURE")
             return Plugin.CorruptionTexture;
         
-        return null;
-    }
-    
-    private static bool IsHandSprite(SpriteRenderer spriteRenderer)
-    {
-        // Check if the sprite renderer is part of a player's hand
-        Transform current = spriteRenderer.transform;
-        while (current != null)
-        {
-            var player = current.GetComponent<ENT_Player>();
-            if (player != null)
-            {
-                return player.hands.Any(h => h?.handSprite == spriteRenderer);
-            }
-            current = current.parent;
-        }
-        return false;
-    }
-    
-    private static Texture2D? GetHandTexture(SpriteRenderer spriteRenderer, string textureName)
-    {
-        Transform current = spriteRenderer.transform;
-        while (current != null)
-        {
-            var player = current.GetComponent<ENT_Player>();
-            if (player != null)
-            {
-                for (int i = 0; i < player.hands.Length; i++)
-                {
-                    var hand = player.hands[i];
-                    if (hand?.handSprite == spriteRenderer)
-                    {
-                        // Check if this hand has a custom texture pack
-                        if (HandTextureManager.HasCustomTexturePack(i))
-                        {
-                            string packGuid = HandTextureManager.GetHandTexturePackGuid(i);
-                            var pack = LoadedPacks.FirstOrDefault(p => p.guid == packGuid);
-                            if (pack != null)
-                            {
-                                var handTexture = pack.GetTexture(textureName);
-                                if (handTexture != null)
-                                {
-                                    RHLog.Debug($"Found texture '{textureName}' for hand {i} in pack '{pack.name}'");
-                                    return handTexture;
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-                break;
-            }
-            current = current.parent;
-        }
-        return null;
-    }
-    
-    private static Texture2D? GetHandSpecificPrefixedTexture(SpriteRenderer spriteRenderer, string textureName)
-    {
-        Transform current = spriteRenderer.transform;
-        while (current != null)
-        {
-            var player = current.GetComponent<ENT_Player>();
-            if (player != null)
-            {
-                for (int i = 0; i < player.hands.Length; i++)
-                {
-                    var hand = player.hands[i];
-                    if (hand?.handSprite == spriteRenderer)
-                    {
-                        string handPrefix = i == 0 ? "Left_" : "Right_";
-                        string prefixedTextureName = handPrefix + textureName;
-                        
-                        // Look for the prefixed texture in active packs
-                        foreach (var pack in ActivePacks)
-                        {
-                            var prefixedTexture = pack.GetTexture(prefixedTextureName);
-                            if (prefixedTexture != null)
-                            {
-                                RHLog.Debug($"Found prefixed texture '{prefixedTextureName}' for hand {i} in pack '{pack.name}'");
-                                return prefixedTexture;
-                            }
-                        }
-                        break;
-                    }
-                }
-                break;
-            }
-            current = current.parent;
-        }
         return null;
     }
     
@@ -196,7 +138,7 @@ public static class ResourcePacksManager
         return clip;
     }
     
-    internal static void MovePack(TexturePack pack, bool isUp)
+    internal static void MovePack(ResourcePack pack, bool isUp)
     {
         int packIndex = ResourcePacksManager.LoadedPacks.FindIndex(p => p == pack);
 
@@ -211,7 +153,7 @@ public static class ResourcePacksManager
             return;
         }
 
-        TexturePack previousPack = ResourcePacksManager.LoadedPacks[nextPackIndex];
+        ResourcePack previousPack = ResourcePacksManager.LoadedPacks[nextPackIndex];
         ResourcePacksManager.LoadedPacks[nextPackIndex] = pack;
         ResourcePacksManager.LoadedPacks[packIndex] = previousPack;
         
@@ -268,20 +210,20 @@ public static class ResourcePacksManager
         RHConfig.PackPrefs.Load();
         string[] previousPacksState = RHConfig.PackPrefs.PackOrder;
             
-        TexturePack[] previousPacks = LoadedPacks.ToArray();
-        TexturePack?[] newPacks = new TexturePack[previousPacksState.Length];
+        ResourcePack[] previousPacks = LoadedPacks.ToArray();
+        ResourcePack?[] newPacks = new ResourcePack[previousPacksState.Length];
         for (int i = 0; i < newPacks.Length; i++)
             newPacks[i] = null;
             
         for (int i = 0; i < previousPacksState.Length; i++)
         {
             string guid = previousPacksState[i];
-            TexturePack? pack = previousPacks.FirstOrDefault(p => p.guid == guid);
+            ResourcePack? pack = previousPacks.FirstOrDefault(p => p.guid == guid);
             if (pack != null)
                 newPacks[i] = pack;
         }
 
-        List<TexturePack> finalPacks = [];
+        List<ResourcePack> finalPacks = [];
         foreach (var p in newPacks)
             if(p != null) finalPacks.Add(p);
         // incase we missed any or replaced them just add them to the end
@@ -383,7 +325,7 @@ public static class ResourcePacksManager
             try
             {
                 RHLog.Info($"Loading texture pack: {path}");
-                TexturePack? pack = await TexturePack.Load(path);
+                ResourcePack? pack = await ResourcePack.Load(path);
                 if (pack == null)
                 {
                     RHLog.Warning($"Failed to load pack at {path}!");

@@ -52,7 +52,7 @@ namespace ResourcefulHands;
 */
 
 [System.Serializable]
-public class TexturePack
+public class ResourcePack
 {
     public string name = string.Empty;
     public string desc = string.Empty;
@@ -75,7 +75,7 @@ public class TexturePack
     public string relativeIconPath = "pack.png";
     
     [JsonProperty(propertyName:"format-version", NullValueHandling=NullValueHandling.Ignore)]
-    public int texturePackVersion = CurrentFormatVersion;
+    public int resourcePackVersion = CurrentFormatVersion;
     
     [JsonIgnore]
     [System.NonSerialized]
@@ -138,7 +138,7 @@ public class TexturePack
         return clip;
     }
     
-    public static async Task<TexturePack?> Load(string path, bool force = false)
+    public static async Task<ResourcePack?> Load(string path, bool force = false)
     {
         bool isConfigPack = path.Contains("config") && path.Contains("RHPacks");
 
@@ -148,10 +148,10 @@ public class TexturePack
             RHLog.Warning($"{path} doesn't have an info.json!");
             return null;
         }
-        TexturePack? pack = JsonConvert.DeserializeObject<TexturePack>(await File.ReadAllTextAsync(jsonPath));
+        ResourcePack? pack = JsonConvert.DeserializeObject<ResourcePack>(await File.ReadAllTextAsync(jsonPath));
         if (pack == null)
         {
-            RHLog.Warning($"{jsonPath} isn't a valid TexturePack json!");
+            RHLog.Warning($"{jsonPath} isn't a valid ResourcePack json!");
             RHLog.Info("Example: " + DefaultJson);
             return null;
         }
@@ -172,8 +172,8 @@ public class TexturePack
             }
         }
         
-        if(pack.texturePackVersion != CurrentFormatVersion)
-            RHLog.Warning($"Texture pack at {path} is format version {pack.texturePackVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
+        if(pack.resourcePackVersion != CurrentFormatVersion)
+            RHLog.Warning($"Texture pack at {path} is format version {pack.resourcePackVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
         
         string iconPath = Path.Combine(path, pack.relativeIconPath);
         if(!File.Exists(iconPath))
@@ -273,7 +273,7 @@ public class TexturePack
         return pack;
     }
 
-    private static async Task LoadAllSounds(IEnumerable<string> soundFiles, TexturePack pack)
+    private static async Task LoadAllSounds(IEnumerable<string> soundFiles, ResourcePack pack)
     {
         var soundTasks = new List<Task>();
         var files = soundFiles.ToList();
@@ -296,7 +296,7 @@ public class TexturePack
     
     // ive tweaked this because for some reason unity decided to randomly remember
     // that it isn't thread safe and all of this code stopped working
-    private static async Task LoadSound(string filepath, TexturePack pack)
+    private static async Task LoadSound(string filepath, ResourcePack pack)
     {
         var type = Path.GetExtension(filepath)[1..]; // This also returns a dot for some reason
         
@@ -325,7 +325,7 @@ public class TexturePack
         CoroutineDispatcher.Dispatch(LoadSoundRoutine(filepath, pack, audioType));
     }
 
-    private static IEnumerator LoadSoundRoutine(string filepath, TexturePack pack, AudioType audioType)
+    private static IEnumerator LoadSoundRoutine(string filepath, ResourcePack pack, AudioType audioType)
     {
         var clipName = Path.GetFileNameWithoutExtension(filepath);
         AudioClip? audioClip = null;

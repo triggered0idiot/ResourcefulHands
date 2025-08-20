@@ -21,7 +21,7 @@ public class UI_RHPack : MonoBehaviour
     public Image? EnableOn; //  Disable/Toggle/ToggleImg
     public Image? EnableOff; //  Disable/Toggle/OffImg
 
-    private TexturePack _pack = null!;
+    private ResourcePack _pack = null!;
     
     private T? FindAt<T>(string path) where T : Component
     {
@@ -56,7 +56,7 @@ public class UI_RHPack : MonoBehaviour
     }
 
     // Loads the pack's values into the ui, this should only be called once.
-    public void Load(TexturePack pack, bool active = true)
+    public void Load(ResourcePack pack, bool active = true)
     {
         _pack = pack;
 

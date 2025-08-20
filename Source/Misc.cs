@@ -89,68 +89,37 @@ public static class MiscUtils
 
         return sb.ToString();
     }
-    
-    // TODO: add mesh support
-    // https://gist.github.com/MattRix/0522c27ee44c0fbbdf76d65de123eeff
-    private static int StartIndex = 0;
-	
-    public static void Start()
-    {
-        StartIndex = 0;
-    }
-    public static void End()
-    {
-        StartIndex = 0;
-    }
 
-    public static string MeshToString(this MeshFilter mf, Transform t) 
-    {	
-        Vector3 s 		= t.localScale;
-        Vector3 p 		= t.localPosition;
-        Quaternion r 	= t.localRotation;
-		
-		
-        int numVertices = 0;
-        Mesh m = mf.sharedMesh;
-        if (!m)
+    public static Transform? FindParentWithName(Transform current, string name)
+    {
+        while (current.name != name)
         {
-            return "####Error####";
+            current = current.parent;
+            if (current == null)
+                return null;
         }
-        Material[] mats = mf.GetComponent<Renderer>().sharedMaterials;
-		
-        StringBuilder sb = new StringBuilder();
-		
-        foreach(Vector3 vv in m.vertices)
+        return current;
+    }
+    public static Transform? FindChildWithParentNamed(Transform current, string name)
+    {
+        while (current.parent.name != name)
         {
-            Vector3 v = t.TransformPoint(vv);
-            numVertices++;
-            sb.Append($"v {v.x} {v.y} {-v.z}\n");
+            current = current.parent;
+            if (current == null)
+                return null;
+            if (current.parent == null)
+                return null;
         }
-        sb.Append("\n");
-        foreach(Vector3 nn in m.normals) 
+        return current;
+    }
+    public static Transform? FindTopmostParent(Transform current)
+    {
+        while (current.parent != null)
         {
-            Vector3 v = r * nn;
-            sb.Append($"vn {-v.x} {-v.y} {v.z}\n");
+            current = current.parent;
+            if (current == null)
+                return null;
         }
-        sb.Append("\n");
-        foreach(Vector3 v in m.uv) 
-        {
-            sb.Append($"vt {v.x} {v.y}\n");
-        }
-        for (int material=0; material < m.subMeshCount; material ++) 
-        {
-            sb.Append("\n");
-            sb.Append("usemtl ").Append(mats[material].name).Append("\n");
-            sb.Append("usemap ").Append(mats[material].name).Append("\n");
-			
-            int[] triangles = m.GetTriangles(material);
-            for (int i=0;i<triangles.Length;i+=3) {
-                sb.Append(string.Format("f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\n", 
-                    triangles[i]+1+StartIndex, triangles[i+1]+1+StartIndex, triangles[i+2]+1+StartIndex));
-            }
-        }
-		
-        StartIndex += numVertices;
-        return sb.ToString();
+        return current;
     }
 }

@@ -75,7 +75,7 @@ public class Plugin : BaseUnityPlugin
 
     internal static void RefreshTextures()
     {
-        SpriteRendererPatches._customSpriteCache.Clear();
+        SpriteManager.ClearSpriteCache();
         
         // do some manipulation to the variables to trigger the harmony patches to replace them
         List<Material> allMaterials = Resources.FindObjectsOfTypeAll<Material>().ToList();

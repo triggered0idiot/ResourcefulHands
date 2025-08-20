@@ -41,9 +41,6 @@ public class DebugTools : MonoBehaviour
     public void Awake()
     {
         Instance = this;
-#if DEBUG
-        isOn = true;
-#endif
         if (RHConfig.AlwaysDebug)
             isOn = true;
         

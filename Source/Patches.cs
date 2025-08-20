@@ -20,7 +20,7 @@ public static class ImagePatches
     public static void Getter_sprite_Postfix(Image __instance, ref Sprite __result) {
         if (__result == null)
             return;
-        __result = SpriteRendererPatches.GetSprite(__result)!;
+        __result = SpriteManager.GetReplacementSprite(__result)!;
     }
 }
 
@@ -28,7 +28,6 @@ public static class ImagePatches
 public static class SpriteRendererPatches
 {
     private static bool dontPatch = false; // prevents loopbacks
-    internal static Dictionary<string, Sprite> _customSpriteCache { get; private set; } = new();
 
     public static void Patch(SpriteRenderer sr)
     {
@@ -37,90 +36,18 @@ public static class SpriteRendererPatches
         Sprite s = sr.sprite;
         if(s == null) return;
         dontPatch = true;
-        sr.sprite = GetSprite(s, sr) ?? s;
+        sr.sprite = SpriteManager.GetReplacementSpriteForRenderer(sr) ?? s;
     }
     
-    public static Sprite? GetSprite(Sprite sprite, SpriteRenderer? spriteRenderer = null)
-    {
-        if (sprite == null || sprite.texture == null)
-            return sprite;
-
-        bool isModifiedSprite = sprite.name.EndsWith(Plugin.ModifiedStr);
-        string spriteCacheName = sprite.name;
-        if(isModifiedSprite)
-            spriteCacheName = spriteCacheName.Substring(0, spriteCacheName.Length - Plugin.ModifiedStr.Length);
-        
-        string textureCacheName = sprite.texture.name;
-        bool isModifiedTexture = textureCacheName.EndsWith(Plugin.ModifiedStr);
-        if(isModifiedTexture)
-            textureCacheName = textureCacheName.Substring(0, textureCacheName.Length - Plugin.ModifiedStr.Length);
-        
-        Sprite? cachedSprite = null;
-        if (_customSpriteCache.TryGetValue(spriteCacheName, out var spriteCache))
-        {
-            if(spriteCache != null)
-                cachedSprite = spriteCache;
-            else
-            {
-                RHLog.Debug($"{spriteCacheName} is null now for some reason [cached]");
-                _customSpriteCache.Remove(spriteCacheName);
-            }
-        }
-        
-        var texture = ResourcePacksManager.GetTextureFromPacks(textureCacheName, spriteRenderer);
-        if (texture == null)
-            return cachedSprite ?? sprite;
-        
-        if (cachedSprite != null && cachedSprite.texture == texture) return cachedSprite;
-        else RHLog.Debug($"Regenerating new sprite for {sprite} because the texture changed.");
-
-        // clamp rect incase someone fucks the texture size
-        float clampedX = Mathf.Clamp(sprite.rect.x, 0, texture.width);
-        float clampedY = Mathf.Clamp(sprite.rect.y, 0, texture.height);
-        float clampedWidth = Mathf.Clamp(sprite.rect.width, 0, texture.width - clampedX);
-        float clampedHeight = Mathf.Clamp(sprite.rect.height, 0, texture.height - clampedY);
-        
-        var localSprite = Sprite.Create(texture, new Rect(clampedX, clampedY, clampedWidth, clampedHeight), new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height), sprite.pixelsPerUnit);
-        localSprite.name = spriteCacheName + Plugin.ModifiedStr;
-        
-        if(!isModifiedSprite)
-        {
-            RHLog.Debug($"{sprite} is being replaced, assuming its an original sprite we are caching it");
-            var tex = sprite.texture;
-            if (tex == null)
-                RHLog.Warning($"{sprite} has no texture");
-            else
-                OriginalAssetTracker.textures.TryAdd(tex.name, tex);
-        }
-        RHLog.Debug($"cached new replacement {spriteCacheName} as {localSprite}");
-        
-        _customSpriteCache.Remove(spriteCacheName);
-        _customSpriteCache.Add(spriteCacheName, localSprite);
-        return localSprite; 
-    }
-
-    [HarmonyPatch("sprite", MethodType.Getter)]
-    [HarmonyPostfix]
-    private static void Getter_Postfix(SpriteRenderer __instance, ref Sprite __result)
-    {
-        if (dontPatch)
-        { dontPatch = false; return; }
-        
-        __result = GetSprite(__result, __instance)!;
-        dontPatch = true;
-        __instance.sprite = __result;
-    }
-
     [HarmonyPatch("sprite", MethodType.Setter)]
     [HarmonyPostfix]
-    private static void Setter_Prefix(SpriteRenderer __instance, ref Sprite value)
+    private static void Setter_Postfix(SpriteRenderer __instance, ref Sprite value)
     {
         if (dontPatch)
         { dontPatch = false; return; }
         
-        value = GetSprite(value, __instance)!;
-        dontPatch = true;
-        __instance.sprite = value;
+        Patch(__instance);
+        value = __instance.sprite;
     }
 }
 
@@ -224,7 +151,7 @@ public static class MaterialPatches
         
         // if the original is already cached this will just silently fail
         Cache(texture2D);
-        var texture = ResourcePacksManager.GetTextureFromPacks(texture2D.name);
+        var texture = ResourcePacksManager.GetTextureFromPacks(texture2D.name, true);
         if(texture == null) return;
         
         value = texture;
@@ -238,7 +165,7 @@ public static class MaterialPatches
         
         // if the original is already cached this will just silently fail
         Cache(texture2D);
-        var texture = ResourcePacksManager.GetTextureFromPacks(texture2D.name);
+        var texture = ResourcePacksManager.GetTextureFromPacks(texture2D.name, true);
         if(texture == null) return;
         
         value = texture;
@@ -255,10 +182,9 @@ public static class MaterialPatches
         
         // if the original is already cached this will just silently fail
         Cache(mainTex as Texture2D);
-        var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name);
+        var texture = ResourcePacksManager.GetTextureFromPacks(mainTex.name, true);
         if(texture == null) return;
         
-        dontPatch = true;
         __instance.mainTexture = texture;
     }
     [HarmonyPatch(methodName:"set_mainTexture")]
