@@ -8,9 +8,9 @@ using UnityEngine.SceneManagement;
 namespace ResourcefulHands;
 
 // TODO: add debug tools
-public class DebugTools : MonoBehaviour
+public class RHDebugTools : MonoBehaviour
 {
-    public static DebugTools? Instance;
+    public static RHDebugTools? Instance;
     public static bool isOn = false;
 
     private static List<AudioClip> _playingClips = new List<AudioClip>();
@@ -19,7 +19,7 @@ public class DebugTools : MonoBehaviour
 
     internal static void Create()
     {
-        Instance = new GameObject("DebugTools").AddComponent<DebugTools>();
+        Instance = new GameObject("DebugTools").AddComponent<RHDebugTools>();
         DontDestroyOnLoad(Instance);
     }
     
@@ -132,11 +132,11 @@ public static class DEBUG_AudioSourcePatches
     // Shared logic
     private static void LogClip(AudioSource src = null!, AudioClip clip = null!)
     {
-        if(!DebugTools.isOn) return;
+        if(!RHDebugTools.isOn) return;
         
         if(src != null) clip = src.clip;
         if(clip == null) return;
         
-        DebugTools.QueueSound(clip);
+        RHDebugTools.QueueSound(clip);
     }
 }

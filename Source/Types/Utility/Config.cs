@@ -74,9 +74,9 @@ public static class RHConfig
             
             // TODO: quick fix, ill replace it later
             if (!string.IsNullOrEmpty(LeftHandPack))
-                SpriteManager.OverrideHands(LeftHandPack, SpriteManager.GetHandPrefix(0));
+                RHSpriteManager.OverrideHands(LeftHandPack, RHSpriteManager.GetHandPrefix(0));
             if (!string.IsNullOrEmpty(RightHandPack))
-                SpriteManager.OverrideHands(RightHandPack, SpriteManager.GetHandPrefix(1));
+                RHSpriteManager.OverrideHands(RightHandPack, RHSpriteManager.GetHandPrefix(1));
         }
 
         public static void Save()

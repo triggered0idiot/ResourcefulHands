@@ -73,9 +73,9 @@ public class Plugin : BaseUnityPlugin
     
     public Harmony? Harmony { get; private set; }
 
-    internal static void RefreshTextures()
+    internal static void RefreshTextures() // TODO: refresh without fucky manipulation tatics?
     {
-        SpriteManager.ClearSpriteCache();
+        RHSpriteManager.ClearSpriteCache();
         
         // do some manipulation to the variables to trigger the harmony patches to replace them
         List<Material> allMaterials = Resources.FindObjectsOfTypeAll<Material>().ToList();
@@ -103,6 +103,12 @@ public class Plugin : BaseUnityPlugin
 
         foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
             spriteR.sprite = spriteR.sprite;
+        
+        foreach (var img in FindObjectsOfType<Image>(includeInactive: true)) // TODO: fix the logo getting fucked up
+        {
+            img.sprite = img.sprite;
+            img.overrideSprite = img.overrideSprite;
+        }
     }
     
     internal static void RefreshSounds()
@@ -114,88 +120,7 @@ public class Plugin : BaseUnityPlugin
             AudioSourcePatches.SwapClip(audioSource);
     }
 
-    private IEnumerator LoadCustomSettings(UI_SettingsMenu settingsMenu)
-    {
-        yield return new WaitForSecondsRealtime(1.0f);
-        
-        RHLog.Info("Loading custom settings menu...");
-        if (Assets == null)
-        {
-            RHLog.Warning("No assets?");
-            yield break;
-        }
-        try
-        {
-            var tabGroups = settingsMenu.GetComponentsInChildren<UI_TabGroup>();
-            UI_TabGroup? tabGroup = tabGroups.FirstOrDefault(tabGroup => tabGroup.name.ToLower() == "tab selection hor");
-            if (tabGroup != null)
-            {
-                GameObject button = Object.Instantiate(Assets.LoadAsset<GameObject>("Packs"),
-                    tabGroup.transform, false);
-                Button buttonButton = button.GetComponentInChildren<Button>();
-                TextMeshProUGUI buttonTmp = button.GetComponentInChildren<TextMeshProUGUI>();
-
-                GameObject menu = Object.Instantiate(Assets.LoadAsset<GameObject>("Pack Settings"),
-                    tabGroup.transform.parent, false);
-                
-                Button reloadButton = menu.transform.Find("Reload")
-                    .GetComponentInChildren<Button>();
-                reloadButton.onClick.AddListener(() => ResourcePacksManager.ReloadPacks());
-                Button openFolder = menu.transform.Find("OpenFolder")
-                    .GetComponentInChildren<Button>();
-                openFolder.onClick.AddListener(() => Application.OpenURL("file://" + RHConfig.PacksFolder.Replace("\\", "/")));
-                
-                menu.AddComponent<UI_RHPacksList>();
-                menu.SetActive(false);
-
-                for (int i = 0; i < tabGroup.transform.childCount; i++)
-                {
-                    Transform child = tabGroup.transform.GetChild(i);
-                    string cName = child.name.ToLower();
-                    if (cName.StartsWith("lb") || cName.StartsWith("rb"))
-                        child.gameObject.SetActive(false);
-                }
-
-                var prevTab = tabGroup.tabs.FirstOrDefault();
-                if (prevTab != null)
-                {
-                    buttonTmp.font = prevTab.button.GetComponentInChildren<TextMeshProUGUI>().font;
-                    for (int i = 0; i < prevTab.tabObject.transform.childCount; i++)
-                    {
-                        Transform child = prevTab.tabObject.transform.GetChild(i);
-                        if (child.name.ToLower().Contains("title"))
-                        {
-                            TextMeshProUGUI title = child.GetComponentInChildren<TextMeshProUGUI>();
-                            if (title)
-                            {
-                                GameObject copiedTitle = Object.Instantiate(child.gameObject, menu.transform, true);
-                                var tmp = copiedTitle.GetComponentInChildren<TextMeshProUGUI>();
-                                tmp.text = "PACKS";
-                                
-                                TextMeshProUGUI[] texts = menu.GetComponentsInChildren<TextMeshProUGUI>(includeInactive: true);
-                                foreach (var text in texts)
-                                    text.font = tmp.font;
-                            }
-                        }
-                    }
-                }
-
-                var tab = new UI_TabGroup.Tab
-                {
-                    button = buttonButton,
-                    name = "packs",
-                    tabObject = menu
-                };
-                buttonButton.onClick.AddListener(() => { tabGroup.SelectTab("packs"); });
-                tabGroup.tabs.Add(tab);
-            }
-        }
-        catch (Exception e)
-        {
-            RHLog.Error("Failed to load custom settings menu:\n"+e.ToString());
-        }
-    }
-
+    // TODO: remove jank
     internal static int targetFps = 60;
     public static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     public static bool IsMainThread => System.Threading.Thread.CurrentThread.ManagedThreadId == mainThreadId;
@@ -282,7 +207,7 @@ public class Plugin : BaseUnityPlugin
                 }
                 
                 RHLog.Info("Loading debug tools...");
-                DebugTools.Create();
+                RHDebugTools.Create();
             }
             
             if (!hasLoadedIntro)
@@ -290,17 +215,14 @@ public class Plugin : BaseUnityPlugin
             
             RHLog.Info("Checking packs state...");
             if (ResourcePacksManager.HasPacksChanged)
-                ResourcePacksManager.ReloadPacks();
+                ResourcePacksManager.ReloadPacks(callback:(() =>
+                { RHSettingsManager.ShowNotice("Packs have been auto reloaded!"); }));
             
             RHLog.Info("Refreshing custom commands...");
             RHCommands.RefreshCommands();
 
             RHLog.Info("Loading settings menu...");
-            var settingsMenu = Object.FindObjectsOfType<UI_SettingsMenu>(true).FirstOrDefault(m => m.gameObject.scene == scene);
-            if (settingsMenu && Assets != null) // right now i don't think there is a "standard" way to inject a custom menu into settings, so this will prolly break if another mod does this too
-            {
-                CoroutineDispatcher.Dispatch(LoadCustomSettings(settingsMenu));
-            }
+            RHSettingsManager.LoadCustomSettings();
             
             RHLog.Info("Refreshing assets...");
             RefreshTextures();

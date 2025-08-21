@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -44,11 +45,14 @@ public class UI_RHPacksList : MonoBehaviour
         ResourcePacksManager.SavePackOrder();
         ResourcePacksManager.SaveDisabledPacks();
     }
+    
+    public static List<UI_RHPack> LoadedPacks { get; private set; } = new List<UI_RHPack>();
 
     void ClearList()
     {
         if (container == null || packTemplate == null) return;
         
+        LoadedPacks.Clear();
         for (int i = 0; i < container.childCount; i++)
         {
             Transform child = container.GetChild(i);
@@ -70,6 +74,33 @@ public class UI_RHPacksList : MonoBehaviour
             newPackUI.Load(pack, ResourcePacksManager.ActivePacks.FirstOrDefault(p => p == pack1) != null);
             newPackUI.gameObject.name = pack.guid;
             newPackUI.gameObject.SetActive(true);
+            LoadedPacks.Add(newPackUI);
         }
+
+        UpdateAllHandToggleStates();
+    }
+
+    /// Calling this shows the ui blocker
+    public void ReloadPacks()
+    {
+        GameObject? reloadOverlay =
+            transform.FindAt<RawImage>("Scroll View/Viewport/ReloadNotice")?.gameObject;
+        if(reloadOverlay != null)
+            reloadOverlay.SetActive(true);
+        ResourcePacksManager.ReloadPacks(waitTillReady:true, callback: () =>
+        {
+            if(reloadOverlay != null)
+                reloadOverlay.SetActive(false);
+            if (!ResourcePacksManager.IsUsingRHPacksFolder || RHSettingsManager.HasShownRHConfigNotice) return;
+                        
+            RHSettingsManager.HasShownRHConfigNotice = true;
+            RHSettingsManager.ShowPopup("Warning - RHPacks", "Some packs that you are using use the RHPacks folder, it is recommended that they use the plugins folder instead.\nPlease notify the developers of these packs if they don't know already.");
+        });
+    }
+    
+    public void UpdateAllHandToggleStates()
+    {
+        foreach (var loadedPack in UI_RHPacksList.LoadedPacks)
+            loadedPack?.UpdateHandToggleState();
     }
 }

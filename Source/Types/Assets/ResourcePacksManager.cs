@@ -59,6 +59,20 @@ public static class ResourcePacksManager
 
         return false;
     }
+
+    public static bool DoesPackATakePriorityOverPackB(ResourcePack a, ResourcePack b)
+    {
+        bool hasFoundA = false;
+        foreach (var pack in LoadedPacks)
+        {
+            if (pack.guid == a.guid)
+                hasFoundA = true;
+            if (pack.guid == b.guid && !hasFoundA)
+                return true;
+        }
+
+        return false;
+    }
     
     // mapping of [texture name] -> [texture, pack to pull]
     private static Dictionary<string, Tuple<string, string>> _textureOverrides = new Dictionary<string, Tuple<string, string>>();
@@ -78,6 +92,19 @@ public static class ResourcePacksManager
     {
         return _textureOverrides.GetValueOrDefault(textureName);
     }
+
+    public static ResourcePack? FindPackWithTexture(string textureName)
+    {
+        ResourcePack? pack = null;
+        foreach (var activePack in ActivePacks)
+        {
+            var myTexture = activePack.GetTexture(textureName);
+            if(myTexture != null)
+                pack = activePack;
+        }
+
+        return pack;
+    }
     
     public static Texture2D? GetTextureFromPacks(string textureName, bool nullOnFail = false)
     {
@@ -96,6 +123,8 @@ public static class ResourcePacksManager
             if (pack != null)
             {
                 texture = pack.GetTexture(replacementInfo.Item1);
+                if(texture == null)
+                    texture = OriginalAssetTracker.GetTexture(textureName);
             }
         }
 

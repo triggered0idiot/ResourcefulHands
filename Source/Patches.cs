@@ -17,10 +17,38 @@ public static class ImagePatches
     // unbelievably simple!
     [HarmonyPatch("activeSprite", MethodType.Getter)]
     [HarmonyPostfix]
-    public static void Getter_sprite_Postfix(Image __instance, ref Sprite __result) {
+    public static void Getter_sprite_Postfix(Image __instance, ref Sprite __result) { // TODO: fix left/right ui sprites not working
         if (__result == null)
             return;
-        __result = SpriteManager.GetReplacementSprite(__result)!;
+        
+        if (__result.texture.name == "hand-sheet")
+        {
+            // cache the original texture
+            OriginalAssetTracker.textures.TryAdd(__result.texture.name, __result.texture);
+
+            string spriteTexName = __result.texture.name;
+            int handId = string.Equals(__instance.gameObject.name, "Interact_L", StringComparison.CurrentCultureIgnoreCase) ? 0 : 1;
+            
+            string prefix = RHSpriteManager.GetHandPrefix(handId);
+            string newSpriteTexName = spriteTexName;
+            
+            if(!newSpriteTexName.StartsWith(prefix))
+                newSpriteTexName = prefix + newSpriteTexName;
+
+            string oldName = __result.name;
+            if (!__result.name.StartsWith(prefix))
+                __result.name = prefix + __result.name;
+            
+            Sprite? newSpr = RHSpriteManager.GetReplacementSprite(__result, newSpriteTexName);
+            __result.name = oldName;
+            if (newSpr != null && newSpr != __result)
+            {
+                __result = newSpr;
+                return;
+            }
+        }
+        
+        __result = RHSpriteManager.GetReplacementSprite(__result) ?? __result;
     }
 }
 
@@ -36,7 +64,7 @@ public static class SpriteRendererPatches
         Sprite s = sr.sprite;
         if(s == null) return;
         dontPatch = true;
-        sr.sprite = SpriteManager.GetReplacementSpriteForRenderer(sr) ?? s;
+        sr.sprite = RHSpriteManager.GetReplacementSpriteForRenderer(sr) ?? s;
     }
     
     [HarmonyPatch("sprite", MethodType.Setter)]

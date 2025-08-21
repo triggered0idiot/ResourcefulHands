@@ -122,4 +122,19 @@ public static class MiscUtils
         }
         return current;
     }
+    
+    
+    public static T? FindAt<T>(this Transform t, string path) where T : Component
+    {
+        string[] objectNames = path.Split('/');
+        for (int i = 0; i < objectNames.Length; i++)
+        {
+            string objectName = objectNames[i];
+            t = t.Find(objectName);
+            if (t == null)
+                return null;
+        }
+
+        return t.GetComponentInChildren<T>();
+    }
 }

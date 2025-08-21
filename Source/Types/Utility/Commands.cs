@@ -58,7 +58,7 @@ public static class RHCommands
         ccInst.RegisterCommand(DisableCommand, DisablePack, false);
         ccInst.RegisterCommand(EnableAllCommand, EnableAll, false);
         ccInst.RegisterCommand(DisableAllCommand, DisableAll, false);
-        ccInst.RegisterCommand(ToggleDebug, (args) => { DebugTools.isOn = !DebugTools.isOn; }, false);
+        ccInst.RegisterCommand(ToggleDebug, (args) => { RHDebugTools.isOn = !RHDebugTools.isOn; }, false);
         ccInst.RegisterCommand(AssignHandPack, AssignHandResourcePack, false);
         ccInst.RegisterCommand(ClearHandPack, ClearHandResourcePack, false);
         ccInst.RegisterCommand(ListHandPacks, ListHandResourcePack, false);
@@ -527,12 +527,12 @@ public static class RHCommands
             return;
         }
 
-        SpriteManager.OverrideHands(pack.guid, SpriteManager.GetHandPrefix(handId));
+        RHSpriteManager.OverrideHands(pack.guid, RHSpriteManager.GetHandPrefix(handId));
         if (handId == 0) RHConfig.PackPrefs.LeftHandPack = pack.guid;
         else RHConfig.PackPrefs.RightHandPack = pack.guid;
         
         // Force refresh of sprites
-        SpriteManager.ClearHandSprites();
+        RHSpriteManager.ClearHandSprites();
         string handName = handId == 0 ? "left" : "right";
         RHLog.Player.Info($"Assigned texture pack '{pack.guid}' to {handName} hand");
     }
@@ -556,12 +556,12 @@ public static class RHCommands
             return;
         }
         
-        SpriteManager.ClearHandsOverride(SpriteManager.GetHandPrefix(handId));
+        RHSpriteManager.ClearHandsOverride(RHSpriteManager.GetHandPrefix(handId));
         if (handId == 0) RHConfig.PackPrefs.LeftHandPack = "";
         else RHConfig.PackPrefs.RightHandPack = "";
         
         // Force refresh of sprites
-        SpriteManager.ClearHandSprites();
+        RHSpriteManager.ClearHandSprites();
         string handName = handId == 0 ? "left" : "right";
         RHLog.Player.Info($"Cleared texture pack from {handName} hand");
     }
@@ -573,7 +573,7 @@ public static class RHCommands
         for (int i = 0; i < 2; i++)
         {
             string handName = i == 0 ? "Left" : "Right";
-            string packGuid = SpriteManager.GetHandsOverride(SpriteManager.GetHandPrefix(i));
+            string packGuid = RHSpriteManager.GetHandsOverride(RHSpriteManager.GetHandPrefix(i));
             
             if (string.IsNullOrEmpty(packGuid))
                 RHLog.Player.Info($"{handName} Hand: No custom pack assigned");

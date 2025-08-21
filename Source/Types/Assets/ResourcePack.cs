@@ -132,6 +132,21 @@ public class ResourcePack
         return texture;
     }
 
+    public bool HasHandTextures()
+    {
+        foreach (var handSpriteName in RHSpriteManager.HandSpriteNames)
+        {
+            if (Textures.ContainsKey(handSpriteName))
+                return true;
+            if (Textures.ContainsKey(RHSpriteManager.GetHandPrefix(0) + handSpriteName))
+                return true;
+            if (Textures.ContainsKey(RHSpriteManager.GetHandPrefix(1) + handSpriteName))
+                return true;
+        }
+        
+        return false;
+    }
+
     public AudioClip? GetSound(string soundName)
     {
         Sounds.TryGetValue(soundName, out var clip);

@@ -6,16 +6,16 @@ using UnityEngine;
 
 namespace ResourcefulHands;
 
-public class SpriteManager
+public class RHSpriteManager
 {
     // -- Hand Sprites --
 
     public static string[] HandSpriteNames { get; } =
     [
-        "Fingers_Sprite_library",
-        "Fingers_Sprite_Library_02",
         "Hands_Sprite_library",
-        "Hands_Sprite_Library_02"
+        "Hands_Sprite_Library_02",
+        "Fingers_Sprite_library",
+        "Fingers_Sprite_Library_02"
     ];
 
     /// Applies <see cref="ResourcePacksManager.AddTextureOverride"/> to each hand sprite for a given pack
@@ -23,12 +23,16 @@ public class SpriteManager
     {
         foreach (var spriteName in HandSpriteNames)
             ResourcePacksManager.AddTextureOverride(lrPrefix + spriteName, spriteName, packId);
+        
+        ResourcePacksManager.AddTextureOverride(lrPrefix + "hand-sheet", "hand-sheet", packId);
     }
     
     public static void ClearHandsOverride(string lrPrefix = "")
     {
         foreach (var spriteName in HandSpriteNames)
             ResourcePacksManager.RemoveTextureOverride(lrPrefix + spriteName);
+                
+        ResourcePacksManager.RemoveTextureOverride(lrPrefix + "hand-sheet");
     }
     
     public static string GetHandsOverride(string lrPrefix = "")
@@ -104,7 +108,6 @@ public class SpriteManager
     
     /// Takes a given sprite renderer and returns the replaced version
     /// This function is used for additional context, such as left and right hands
-    /// TODO: fix spam cache bug with custom Right_ textures NOT command ones, they don't seem to be affected
     public static Sprite? GetReplacementSpriteForRenderer(SpriteRenderer spriteRenderer)
     {
         Sprite s = spriteRenderer.sprite;
@@ -114,12 +117,24 @@ public class SpriteManager
         if (IsHandRenderer(spriteRenderer))
         {
             string prefix = GetHandPrefix(spriteRenderer);
-            string newSpriteTexName = prefix + spriteTexName;
+            string newSpriteTexName = spriteTexName;
+            
+            if(!newSpriteTexName.StartsWith(prefix))
+                newSpriteTexName = prefix + newSpriteTexName;
             
             // check if texture exists
             Texture2D? replacementTexture = ResourcePacksManager.GetTextureFromPacks(newSpriteTexName);
             if (replacementTexture != null)
             {
+                if (string.IsNullOrEmpty(RHConfig.PackPrefs.LeftHandPack) && prefix == GetHandPrefix(0) || string.IsNullOrEmpty(RHConfig.PackPrefs.RightHandPack) && prefix == GetHandPrefix(1))
+                {
+                    ResourcePack? basePack = ResourcePacksManager.FindPackWithTexture(spriteTexName);
+                    ResourcePack? modPack = ResourcePacksManager.FindPackWithTexture(newSpriteTexName);
+                    
+                    if(basePack != null && modPack != null && ResourcePacksManager.DoesPackATakePriorityOverPackB(basePack, modPack))
+                        return GetReplacementSprite(s);
+                }
+
                 if (!s.name.StartsWith(prefix))
                     s.name = prefix + s.name;
 
@@ -129,7 +144,7 @@ public class SpriteManager
                         return spr;
                 }
                 
-                Sprite? newSprite = SpriteManager.GetReplacementSprite(s, newSpriteTexName);
+                Sprite? newSprite = RHSpriteManager.GetReplacementSprite(s, newSpriteTexName);
 
                 if (newSprite != null)
                 {

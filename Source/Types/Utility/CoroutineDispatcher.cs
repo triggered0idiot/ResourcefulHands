@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace ResourcefulHands;
 
-public class CoroutineDispatcher : MonoBehaviour
+internal class CoroutineDispatcher : MonoBehaviour
 {
     private static CoroutineDispatcher? _instance;
     private static Dictionary<string, Action> updateActions = new Dictionary<string, Action>();
