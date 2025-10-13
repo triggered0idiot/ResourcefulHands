@@ -24,7 +24,6 @@ namespace ResourcefulHands;
 public class Plugin : BaseUnityPlugin
 {
     public const string GUID = "triggeredidiot.wkd.resourcefulhands";
-    public const string ModifiedStr = " [rh modified asset]";
 
     private static AssetBundle? _assets;
     public static AssetBundle? Assets
@@ -61,9 +60,7 @@ public class Plugin : BaseUnityPlugin
             try
             {
                 var appid = Steamworks.SteamClient.AppId;
-#if DEBUG
-                RHLog.Info($"Appid: {appid}");
-#endif
+                RHLog.Debug($"Appid: {appid}");
                 if (appid.Value == 3218540) // 3195790 = full game, 3218540 = demo
                     return true;
             }catch(Exception e){RHLog.Error(e);}
@@ -78,8 +75,8 @@ public class Plugin : BaseUnityPlugin
         RHSpriteManager.ClearSpriteCache();
         
         // do some manipulation to the variables to trigger the harmony patches to replace them
-        List<Material> allMaterials = Resources.FindObjectsOfTypeAll<Material>().ToList();
-        foreach (var renderer in FindObjectsOfType<Renderer>(includeInactive: true))
+        List<Material> allMaterials = FindObjectsByType<Material>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToList();
+        foreach (var renderer in FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             allMaterials.AddRange(renderer.sharedMaterials.Where(mat => !allMaterials.Contains(mat)));
         int mainTex = Shader.PropertyToID("_MainTex");
         
@@ -101,10 +98,10 @@ public class Plugin : BaseUnityPlugin
             { RHLog.Error(e); }
         }
 
-        foreach (var spriteR in FindObjectsOfType<SpriteRenderer>(includeInactive: true))
+        foreach (var spriteR in FindObjectsByType<SpriteRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             spriteR.sprite = spriteR.sprite;
         
-        foreach (var img in FindObjectsOfType<Image>(includeInactive: true)) // TODO: fix the logo getting fucked up
+        foreach (var img in FindObjectsByType<Image>(FindObjectsInactive.Include, FindObjectsSortMode.None)) // TODO: fix the logo getting fucked up
         {
             img.sprite = img.sprite;
             img.overrideSprite = img.overrideSprite;
@@ -114,7 +111,7 @@ public class Plugin : BaseUnityPlugin
     internal static void RefreshSounds()
     {
         // do some manipulation to the variables to trigger the harmony patches to replace them
-        List<AudioSource> allAudioSources = Resources.FindObjectsOfTypeAll<AudioSource>().ToList();
+        List<AudioSource> allAudioSources = FindObjectsByType<AudioSource>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToList();
 
         foreach (var audioSource in allAudioSources)
             AudioSourcePatches.SwapClip(audioSource);
@@ -225,11 +222,18 @@ public class Plugin : BaseUnityPlugin
             RHSettingsManager.LoadCustomSettings();
             
             RHLog.Info("Refreshing assets...");
-            RefreshTextures();
-            RefreshSounds();
+            RefreshAllAssets();
         };
         
         RHLog.Message("Resourceful Hands has loaded!");
+    }
+
+    internal static void RefreshAllAssets(bool refreshOriginalAssets = true)
+    {
+        RefreshTextures();
+        RefreshSounds();
+        if(refreshOriginalAssets)
+            OriginalAssetTracker.ClearAll();
     }
 }
 // amongus

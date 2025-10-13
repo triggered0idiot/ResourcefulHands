@@ -8,6 +8,7 @@ using BepInEx;
 using HarmonyLib;
 using Newtonsoft.Json;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace ResourcefulHands;
 
@@ -16,11 +17,21 @@ namespace ResourcefulHands;
 // while this works for hands, it doesn't really work for anything else without a scene reload
 internal static class OriginalAssetTracker
 {
-    // as long as no assets of the same type share a name this should be good
+    // i used to use a simple prefix on the name, but that was kinda jank (atleast i think)
+    internal static List<Object> ModifiedAssets = new List<Object>();
     
+    // as long as no assets of the same type share a name this should be good
+    public static Dictionary<string, Sprite> sprites = new();
     public static Dictionary<string, Texture2D> textures = new();
     public static Dictionary<string, AudioClip> sounds = new();
 
+    public static void ClearAll()
+    {
+        sprites.Clear();
+        textures.Clear();
+        sounds.Clear();
+    }
+    
     public static AudioClip? GetSound(string clipName)
     {
         return sounds.GetValueOrDefault(clipName);
@@ -28,6 +39,14 @@ internal static class OriginalAssetTracker
     public static Texture2D? GetTexture(string texName)
     {
         return textures.GetValueOrDefault(texName);
+    }
+    public static Sprite? GetSprite(string spriteName)
+    {
+        return sprites.GetValueOrDefault(spriteName);
+    }
+    public static Sprite? GetFirstSpriteFromTextureName(string textureName)
+    {
+        return sprites.Values.FirstOrDefault(sprite => sprite.texture.name == textureName);
     }
 }
 
@@ -392,8 +411,7 @@ public static class ResourcePacksManager
             LoadDisabledPacks();
             
             // attempt to refresh previously loaded stuff
-            Plugin.RefreshTextures();
-            Plugin.RefreshSounds();
+            Plugin.RefreshAllAssets(false);
 
             // just incase
             if (UI_RHPacksList.Instance != null)

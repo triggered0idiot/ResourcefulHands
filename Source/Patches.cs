@@ -14,10 +14,10 @@ namespace ResourcefulHands.Patches;
 [HarmonyPatch(typeof(Image))]
 public static class ImagePatches
 {
-    // unbelievably simple!
     [HarmonyPatch("activeSprite", MethodType.Getter)]
     [HarmonyPostfix]
-    public static void Getter_sprite_Postfix(Image __instance, ref Sprite __result) { // TODO: fix left/right ui sprites not working
+    public static void Getter_sprite_Postfix(Image __instance, ref Sprite __result) {
+        // TODO: fix left/right ui sprites not working
         if (__result == null)
             return;
         
@@ -32,6 +32,16 @@ public static class ImagePatches
             string prefix = RHSpriteManager.GetHandPrefix(handId);
             string newSpriteTexName = spriteTexName;
             
+            // if there isnt a pack associated to a l/r hand then dont replace the l/r hand
+            if ((RHConfig.PackPrefs.GetLeftHandPack() == null && handId == 0)||
+                (RHConfig.PackPrefs.GetRightHandPack() == null && handId == 1))
+            {
+                Sprite? originalSpr = OriginalAssetTracker.GetFirstSpriteFromTextureName(spriteTexName);
+                if(originalSpr != null)
+                    __result = originalSpr;
+                return;
+            }
+            
             if(!newSpriteTexName.StartsWith(prefix))
                 newSpriteTexName = prefix + newSpriteTexName;
 
@@ -39,8 +49,17 @@ public static class ImagePatches
             if (!__result.name.StartsWith(prefix))
                 __result.name = prefix + __result.name;
             
+            ResourcePack? myPack = handId == 0 ? RHConfig.PackPrefs.GetLeftHandPack() : RHConfig.PackPrefs.GetRightHandPack();
             Sprite? newSpr = RHSpriteManager.GetReplacementSprite(__result, newSpriteTexName);
             __result.name = oldName;
+            
+            if (myPack != null && !(myPack.Textures.ContainsKey(newSpriteTexName) || myPack.Textures.ContainsKey(spriteTexName)))
+            {
+                Sprite? originalSpr = OriginalAssetTracker.GetFirstSpriteFromTextureName(spriteTexName);
+                if(originalSpr != null)
+                    __result = originalSpr;
+                return;
+            }
             if (newSpr != null && newSpr != __result)
             {
                 __result = newSpr;
@@ -59,12 +78,18 @@ public static class SpriteRendererPatches
 
     public static void Patch(SpriteRenderer sr)
     {
-        if (sr == null) return;
-        dontPatch = true;
+        if(sr == null) return;
         Sprite s = sr.sprite;
+        
         if(s == null) return;
         dontPatch = true;
-        sr.sprite = RHSpriteManager.GetReplacementSpriteForRenderer(sr) ?? s;
+        Sprite nS = RHSpriteManager.GetReplacementSpriteForRenderer(sr) ?? s;
+        
+        // stop the setter from being patched
+        if(s == null) return;
+        dontPatch = true;
+        
+        sr.sprite = nS;
     }
     
     [HarmonyPatch("sprite", MethodType.Setter)]

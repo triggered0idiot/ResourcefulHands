@@ -49,6 +49,33 @@ namespace ResourcefulHands;
         
         "format-version":2
     }
+    
+    // version 3 spec
+    {
+        "name":"generated-game-assets",
+        "desc":"Every game asset",
+        "author":"Dark Machine Games",
+        // new feature, version strings for packs
+        // now you can show people your pack's progress
+        "pack-version":"b0.50p",
+        
+        "guid":"generated-game-assets",
+        "steamid":0,
+        "hidden-from-list":true,
+        "only-in-full-game":false,
+        
+        // uses the version string at the top left, i.e b0.50p
+        // if the game version has a different number like 0.55 then
+        // a warning will appear, otherwise if a letter changes like b0.50d
+        // no warning will appear
+        "game-string":"b0.50p",
+        
+        "textures-folder":"Textures",
+        "sounds-folder":"Sounds",
+        "icon-file":"pack.png",
+        
+        "format-version":3
+    }
 */
 
 [System.Serializable]
@@ -57,11 +84,13 @@ public class ResourcePack
     public string name = string.Empty;
     public string desc = string.Empty;
     public string author = string.Empty;
+    [JsonProperty(propertyName:"pack-version", NullValueHandling=NullValueHandling.Ignore)]
+    public string packVersion = string.Empty;
+    
     [JsonProperty(propertyName:"steamid", NullValueHandling=NullValueHandling.Ignore)]
     public ulong steamId = 0;
     [JsonProperty(NullValueHandling=NullValueHandling.Include)]
     public string guid = string.Empty;
-    
     [JsonProperty(propertyName:"hidden-from-list", NullValueHandling=NullValueHandling.Ignore)]
     public bool hiddenFromList = false;
     [JsonProperty(propertyName:"only-in-full-game", NullValueHandling=NullValueHandling.Ignore)]
@@ -79,7 +108,7 @@ public class ResourcePack
     
     [JsonIgnore]
     [System.NonSerialized]
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
     [JsonIgnore]
     [System.NonSerialized]
     public bool IsActive = true;
@@ -108,20 +137,21 @@ public class ResourcePack
     {
         "name":"generated-game-assets",
         "desc":"Every game asset",
-        
         "author":"Dark Machine Games",
-        "steamid":0,
+        "pack-version":"0.50",
         
         "guid":"generated-game-assets",
-        
+        "steamid":0,
         "hidden-from-list":true,
         "only-in-full-game":false,
+        
+        "game-string":"b0.50p",
         
         "textures-folder":"Textures",
         "sounds-folder":"Sounds",
         "icon-file":"pack.png",
         
-        "format-version":2
+        "format-version":3
     }                                                           
     """;
     

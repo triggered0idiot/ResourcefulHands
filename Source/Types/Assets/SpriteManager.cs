@@ -10,13 +10,37 @@ public class RHSpriteManager
 {
     // -- Hand Sprites --
 
-    public static string[] HandSpriteNames { get; } =
-    [
+    /* old names
+     [
         "Hands_Sprite_library",
         "Hands_Sprite_Library_02",
         "Fingers_Sprite_library",
         "Fingers_Sprite_Library_02"
     ];
+    */
+    public static string[] HandSpriteNames
+    {
+        get
+        {
+            if (Plugin.IsDemo)
+            {
+                return
+                [
+                    "Hands_Sprite_library",
+                    "Hands_Sprite_Library_02",
+                    "Fingers_Sprite_library",
+                    "Fingers_Sprite_Library_02"
+                ];
+            }
+            return
+            [
+                "Hands_Foreground_Sprite_Library_01",
+                "Hands_Background_Sprite_Library_01",
+                "Hands_Foreground_Sprite_Library_02",
+                "Hands_Background_Sprite_Library_02"
+            ];
+        }
+    }
 
     /// Applies <see cref="ResourcePacksManager.AddTextureOverride"/> to each hand sprite for a given pack
     public static void OverrideHands(string packId, string lrPrefix = "")
@@ -122,33 +146,35 @@ public class RHSpriteManager
             if(!newSpriteTexName.StartsWith(prefix))
                 newSpriteTexName = prefix + newSpriteTexName;
             
+            // if there isnt a pack associated to a l/r hand then dont replace the l/r hand
+            if ((RHConfig.PackPrefs.GetLeftHandPack() == null && prefix == GetHandPrefix(0))||
+                (RHConfig.PackPrefs.GetRightHandPack() == null && prefix == GetHandPrefix(1)))
+            {
+                return null;
+            }
+
             // check if texture exists
             Texture2D? replacementTexture = ResourcePacksManager.GetTextureFromPacks(newSpriteTexName);
             if (replacementTexture != null)
             {
-                if (string.IsNullOrEmpty(RHConfig.PackPrefs.LeftHandPack) && prefix == GetHandPrefix(0) || string.IsNullOrEmpty(RHConfig.PackPrefs.RightHandPack) && prefix == GetHandPrefix(1))
-                {
-                    ResourcePack? basePack = ResourcePacksManager.FindPackWithTexture(spriteTexName);
-                    ResourcePack? modPack = ResourcePacksManager.FindPackWithTexture(newSpriteTexName);
-                    
-                    if(basePack != null && modPack != null && ResourcePacksManager.DoesPackATakePriorityOverPackB(basePack, modPack))
-                        return GetReplacementSprite(s);
-                }
+                string originalSpriteName = s.name;
+                string spriteName = s.name;
+                if (!spriteName.StartsWith(prefix))
+                    spriteName = prefix + spriteName;
 
-                if (!s.name.StartsWith(prefix))
-                    s.name = prefix + s.name;
-
-                if (_customHandCache.TryGetValue(s.name, out var spr))
+                if (_customHandCache.TryGetValue(spriteName, out var spr))
                 {
                     if (replacementTexture == spr.texture)
                         return spr;
                 }
-                
-                Sprite? newSprite = RHSpriteManager.GetReplacementSprite(s, newSpriteTexName);
 
+                s.name = spriteName;
+                Sprite? newSprite = RHSpriteManager.GetReplacementSprite(s, newSpriteTexName);
+                s.name = originalSpriteName;
+                
                 if (newSprite != null)
                 {
-                    _customHandCache[s.name] = newSprite;
+                    _customHandCache[spriteName] = newSprite;
                     return newSprite;
                 }
             }
@@ -163,15 +189,10 @@ public class RHSpriteManager
         if (sprite == null || sprite.texture == null)
             return sprite;
 
-        bool isModifiedSprite = sprite.name.EndsWith(Plugin.ModifiedStr);
+        bool isModifiedSprite = OriginalAssetTracker.ModifiedAssets.Contains(sprite) || _customSpriteCache.ContainsValue(sprite);
         string spriteCacheName = sprite.name;
-        if(isModifiedSprite)
-            spriteCacheName = spriteCacheName.Substring(0, spriteCacheName.Length - Plugin.ModifiedStr.Length);
         
         string textureCacheName = textureNameOverride ?? sprite.texture.name;
-        bool isModifiedTexture = textureCacheName.EndsWith(Plugin.ModifiedStr);
-        if(isModifiedTexture)
-            textureCacheName = textureCacheName.Substring(0, textureCacheName.Length - Plugin.ModifiedStr.Length);
         
         Sprite? cachedSprite = null;
         if (_customSpriteCache.TryGetValue(spriteCacheName, out var spriteCache))
@@ -199,7 +220,8 @@ public class RHSpriteManager
         float clampedHeight = Mathf.Clamp(sprite.rect.height, 0, texture.height - clampedY);
         
         var localSprite = Sprite.Create(texture, new Rect(clampedX, clampedY, clampedWidth, clampedHeight), new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height), sprite.pixelsPerUnit);
-        localSprite.name = spriteCacheName + Plugin.ModifiedStr;
+        localSprite.name = spriteCacheName;
+        OriginalAssetTracker.ModifiedAssets.Add(localSprite);
         
         if(!isModifiedSprite)
         {
@@ -208,7 +230,10 @@ public class RHSpriteManager
             if (tex == null)
                 RHLog.Warning($"{sprite} has no texture");
             else
+            {
                 OriginalAssetTracker.textures.TryAdd(tex.name, tex);
+                OriginalAssetTracker.sprites.TryAdd(sprite.name, sprite);
+            }
         }
         RHLog.Debug($"cached new replacement {spriteCacheName} as {localSprite}");
         

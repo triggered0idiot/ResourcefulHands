@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using BepInEx;
 using BepInEx.Configuration;
 using Newtonsoft.Json;
@@ -16,6 +17,9 @@ public static class RHConfig
     // Use old sprite replacer
     private static ConfigEntry<bool>? useOldSpr = null;
     public static bool UseOldSprReplace => useOldSpr?.Value ?? false;
+    // Don't load outdated packs
+    private static ConfigEntry<bool>? useOutdatedPacks = null;
+    public static bool UseOutdatedPacks => useOutdatedPacks?.Value ?? false;
     
     // --- DEBUG STUFF ---
     // Colored console
@@ -50,8 +54,18 @@ public static class RHConfig
         
         public static string[] DisabledPacks = [];
         public static string[] PackOrder = [];
+        
         public static string LeftHandPack = string.Empty;
+        public static ResourcePack? GetLeftHandPack()
+        {
+            return ResourcePacksManager.LoadedPacks.FirstOrDefault(pack => pack.guid == LeftHandPack && pack.IsActive);
+        }
+        
         public static string RightHandPack = string.Empty;
+        public static ResourcePack? GetRightHandPack()
+        {
+            return ResourcePacksManager.LoadedPacks.FirstOrDefault(pack => pack.guid == RightHandPack && pack.IsActive);
+        }
 
         internal static string GetFile()
         {
@@ -135,12 +149,21 @@ public static class RHConfig
             $"A new sprite replacer (the thing that lets you have custom hands) has been added, hopefully this should improve performance. However, if you do have issues with this new replacer, turn this on to disable it."
         );
         RHLog.Debug("Bound useOldSpr");
+        useOutdatedPacks = Plugin.Instance.Config.Bind(
+            "General",
+            "Load outdated packs?",
+            true,
+            $"When enabled packs that are made with an older pack-version/game-version won't be loaded."
+        );
+        RHLog.Debug("Bound useOutdatedPacks");
         
         // Debugging
         colorConsole = Plugin.Instance.Config.Bind(
             "Debugging",
             "Colored Console",
-            true,
+            // decided to disable by default because it's a bit prestigious to have rh do it automatically
+            // instead people could turn it on to help see errors in the console i guess, also i like the looks
+            false, 
             $"When enabled certain logs are given colors, disable if this is causing issues. Additionally, only works on windows."
         );
         RHLog.Debug("Bound colorConsole");

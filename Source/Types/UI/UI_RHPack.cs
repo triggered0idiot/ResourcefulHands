@@ -97,8 +97,7 @@ public class UI_RHPack : MonoBehaviour
         {
             if (RHConfig.LazyManip)
             {
-                Plugin.RefreshTextures();
-                Plugin.RefreshSounds();
+                Plugin.RefreshAllAssets(false);
             }
             else
                 UI_RHPacksList.Instance?.ReloadPacks();
