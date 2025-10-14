@@ -52,6 +52,48 @@ internal static class OriginalAssetTracker
 
 public static class ResourcePacksManager
 {
+    // allows old packs to work with the new sprite names
+    public static Dictionary<string, string> OldNewSpriteNames
+    {
+        get
+        {
+            if (Plugin.IsDemo)
+            {
+                return new Dictionary<string, string>
+                {
+                    { "Hands_Background_Sprite_Library_01", "Hands_Sprite_library" },
+                    { "Hands_Background_Sprite_Library_02", "Hands_Sprite_Library_02" },
+                    { "Hands_Foreground_Sprite_Library_01", "Fingers_Sprite_library" },
+                    { "Hands_Foreground_Sprite_Library_02", "Fingers_Sprite_Library_02" },
+                };
+            }
+            return new Dictionary<string, string>
+            {
+                { "Hands_Sprite_library", "Hands_Background_Sprite_Library_01" },
+                { "Hands_Sprite_Library_02", "Hands_Background_Sprite_Library_02" },
+                { "Fingers_Sprite_library", "Hands_Foreground_Sprite_Library_01" },
+                { "Fingers_Sprite_Library_02", "Hands_Foreground_Sprite_Library_02" },
+            };
+        }
+    }
+    public static Dictionary<string, string> OldNewSoundNames
+    {
+        get
+        {
+            if (Plugin.IsDemo)
+            {
+                return new Dictionary<string, string>
+                {
+                    { "", "" },
+                };
+            }
+            return new Dictionary<string, string>
+            {
+                { "", "" },
+            };
+        }
+    }
+    
     public static bool IsUsingRHPacksFolder => LoadedPacks.Exists(p => p.IsConfigFolderPack);
     
     public static List<ResourcePack> LoadedPacks { get; internal set; } = [];

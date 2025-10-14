@@ -6,9 +6,92 @@ using Sirenix.Utilities;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ResourcefulHands.Patches;
+// ReSharper disable InconsistentNaming
+// for harmony special method/param names
 
 // NOTE: some debug related patches are in DebugTools.cs
+namespace ResourcefulHands.Patches;
+
+[HarmonyPatch(typeof(UnityEngine.Object))]
+public static class InstantiatePatches
+{
+    private static void OnInstantiated(UnityEngine.Object result, UnityEngine.Object original)
+    {
+        if (result == null) return;
+        
+        void PatchObject(UnityEngine.Object obj)
+        {
+            switch (obj)
+            {
+                case Image img:
+                    RHLog.Debug($"Patched Image {img}");
+                    img.sprite = img.sprite;
+                    break;
+                case SpriteRenderer sr:
+                    RHLog.Debug($"Patched SpriteRenderer {sr}");
+                    SpriteRendererPatches.Patch(sr);
+                    break;
+                case AudioSource audio:
+                    RHLog.Debug($"Patched AudioSource {audio}");
+                    AudioSourcePatches.SwapClip(audio);
+                    break;
+                case Material mat:
+                    RHLog.Debug($"Patched Material {mat}");
+                    mat.mainTexture = mat.mainTexture;
+                    break;
+            }
+        }
+        
+        RHLog.Debug($"Object spawned: {result.GetType().Name} (from {original?.name ?? "unknown"})");
+        switch (result)
+        {
+            case GameObject go:
+            {
+                Component[] comps = go.GetComponentsInChildren<Component>();
+                foreach (Component comp in comps)
+                    PatchObject(comp);
+                break;
+            }
+            case Component component:
+            {
+                Component[] comps = component.GetComponentsInChildren<Component>();
+                foreach (Component comp in comps)
+                    PatchObject(comp);
+                break;
+            }
+        }
+    }
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(nameof(UnityEngine.Object.Instantiate), new[] { typeof(UnityEngine.Object) })]
+    private static void Postfix_1(UnityEngine.Object __result, UnityEngine.Object original) 
+        => OnInstantiated(__result, original);
+
+    [HarmonyPostfix]
+    [HarmonyPatch(nameof(UnityEngine.Object.Instantiate), new[] { typeof(UnityEngine.Object), typeof(UnityEngine.SceneManagement.Scene) })]
+    private static void Postfix_2(UnityEngine.Object __result, UnityEngine.Object original)
+        => OnInstantiated(__result, original);
+
+    [HarmonyPostfix]
+    [HarmonyPatch(nameof(UnityEngine.Object.Instantiate), new[] { typeof(UnityEngine.Object), typeof(Transform) })]
+    private static void Postfix_3(UnityEngine.Object __result, UnityEngine.Object original)
+        => OnInstantiated(__result, original);
+
+    [HarmonyPostfix]
+    [HarmonyPatch(nameof(UnityEngine.Object.Instantiate), new[] { typeof(UnityEngine.Object), typeof(Transform), typeof(bool) })]
+    private static void Postfix_4(UnityEngine.Object __result, UnityEngine.Object original)
+        => OnInstantiated(__result, original);
+
+    [HarmonyPostfix]
+    [HarmonyPatch(nameof(UnityEngine.Object.Instantiate), new[] { typeof(UnityEngine.Object), typeof(Vector3), typeof(Quaternion) })]
+    private static void Postfix_5(UnityEngine.Object __result, UnityEngine.Object original)
+        => OnInstantiated(__result, original);
+
+    [HarmonyPostfix]
+    [HarmonyPatch(nameof(UnityEngine.Object.Instantiate), new[] { typeof(UnityEngine.Object), typeof(Vector3), typeof(Quaternion), typeof(Transform) })]
+    private static void Postfix_6(UnityEngine.Object __result, UnityEngine.Object original)
+        => OnInstantiated(__result, original);
+}
 
 // thanks McArdellje
 [HarmonyPatch(typeof(Image))]

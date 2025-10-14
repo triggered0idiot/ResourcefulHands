@@ -95,6 +95,9 @@ public class ResourcePack
     public bool hiddenFromList = false;
     [JsonProperty(propertyName:"only-in-full-game", NullValueHandling=NullValueHandling.Ignore)]
     public bool onlyInFullGame = false;
+    
+    [JsonProperty(propertyName:"game-version", NullValueHandling=NullValueHandling.Ignore)]
+    public string gameVersionString = string.Empty;
 
     [JsonProperty(propertyName:"textures-folder", NullValueHandling=NullValueHandling.Ignore)]
     public string relativeTexturesPath = "Textures";
@@ -102,9 +105,11 @@ public class ResourcePack
     public string relativeSoundsPath = "Sounds";
     [JsonProperty(propertyName:"icon-file", NullValueHandling=NullValueHandling.Ignore)]
     public string relativeIconPath = "pack.png";
+    [JsonProperty(propertyName:"icon-filter", NullValueHandling=NullValueHandling.Ignore)]
+    public bool enableFilter = false;
     
     [JsonProperty(propertyName:"format-version", NullValueHandling=NullValueHandling.Ignore)]
-    public int resourcePackVersion = CurrentFormatVersion;
+    public int formatVersion = CurrentFormatVersion;
     
     [JsonIgnore]
     [System.NonSerialized]
@@ -138,10 +143,11 @@ public class ResourcePack
         "name":"generated-game-assets",
         "desc":"Every game asset",
         "author":"Dark Machine Games",
-        "pack-version":"0.50",
         
-        "guid":"generated-game-assets",
+        "pack-version":"0.50",
         "steamid":0,
+        
+        "guid":"generated.game.assets.unique",
         "hidden-from-list":true,
         "only-in-full-game":false,
         
@@ -150,9 +156,10 @@ public class ResourcePack
         "textures-folder":"Textures",
         "sounds-folder":"Sounds",
         "icon-file":"pack.png",
+        "icon-filter":false,
         
         "format-version":3
-    }                                                           
+    }
     """;
     
     // considering cloning these values, TODO: test if the textures and sounds are safe to be shared
@@ -217,8 +224,8 @@ public class ResourcePack
             }
         }
         
-        if(pack.resourcePackVersion != CurrentFormatVersion)
-            RHLog.Warning($"Texture pack at {path} is format version {pack.resourcePackVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
+        if(pack.formatVersion != CurrentFormatVersion)
+            RHLog.Warning($"Texture pack at {path} is format version {pack.formatVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
         
         string iconPath = Path.Combine(path, pack.relativeIconPath);
         if(!File.Exists(iconPath))
@@ -243,13 +250,17 @@ public class ResourcePack
                 else
                 {
                     texture.name = Path.GetFileNameWithoutExtension(iconPath);
-                    texture.filterMode = FilterMode.Point; // something, something retro
+                    texture.filterMode = pack.enableFilter ? FilterMode.Bilinear : FilterMode.Point; // something, something retro
                     texture.Apply();
                     pack.Icon = texture;
                 }
             });
         }
         
+        // TODO: possibly remove this weird behaviour (i haven't decided yet :p)
+        #region PackFixing
+
+        // ensure a clean guid
         string prevGuid = pack.guid;
         if(string.IsNullOrWhiteSpace(pack.guid))
             pack.guid = pack.author.ToLower() + "." + pack.name.ToLower();
@@ -257,10 +268,12 @@ public class ResourcePack
 
         if (pack.guid != prevGuid)
         {
-            string newJson = JsonConvert.SerializeObject(pack);
+            string newJson = JsonConvert.SerializeObject(pack, Formatting.Indented);
             await File.WriteAllTextAsync(jsonPath, newJson);
             RHLog.Warning($"Corrected {pack.name}'s guid: {prevGuid} -> {pack.guid}");
         }
+
+        #endregion
 
         var conflictingPack = ResourcePacksManager.LoadedPacks.FirstOrDefault(p => p.guid == pack.guid);
         if (conflictingPack != null)
@@ -305,6 +318,9 @@ public class ResourcePack
                     return;
                 }
                 texture.name = Path.GetFileNameWithoutExtension(textureFile);
+                if(ResourcePacksManager.OldNewSpriteNames.ContainsKey(texture.name))
+                    texture.name = ResourcePacksManager.OldNewSpriteNames[texture.name];
+                
                 texture.filterMode = FilterMode.Point; // something, something retro
                 texture.Apply();
                 if (!pack.Textures.TryAdd(texture.name, texture))
@@ -405,6 +421,8 @@ public class ResourcePack
         pack.RawSounds.Add(audioClip);
         
         audioClip.name = clipName;
+        if(ResourcePacksManager.OldNewSpriteNames.ContainsKey(clipName))
+            clipName = ResourcePacksManager.OldNewSoundNames[clipName];
         lock (pack.Sounds)
         {
             if (!pack.Sounds.TryAdd(clipName, audioClip))

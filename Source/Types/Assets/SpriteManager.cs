@@ -9,15 +9,7 @@ namespace ResourcefulHands;
 public class RHSpriteManager
 {
     // -- Hand Sprites --
-
-    /* old names
-     [
-        "Hands_Sprite_library",
-        "Hands_Sprite_Library_02",
-        "Fingers_Sprite_library",
-        "Fingers_Sprite_Library_02"
-    ];
-    */
+    
     public static string[] HandSpriteNames
     {
         get
@@ -34,10 +26,17 @@ public class RHSpriteManager
             }
             return
             [
-                "Hands_Foreground_Sprite_Library_01",
                 "Hands_Background_Sprite_Library_01",
+                "Hands_Background_Sprite_Library_02",
+                "Hands_Background_Sprite_Library_03",
+                
+                "Hands_Foreground_Sprite_Library_01",
                 "Hands_Foreground_Sprite_Library_02",
-                "Hands_Background_Sprite_Library_02"
+                "Hands_Foreground_Sprite_Library_03",
+                
+                "Hands_Foreground_Sprite_Library_03",
+                "Perk_handPoses",
+                "milk_fingers"
             ];
         }
     }

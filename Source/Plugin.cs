@@ -114,7 +114,12 @@ public class Plugin : BaseUnityPlugin
         List<AudioSource> allAudioSources = FindObjectsByType<AudioSource>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToList();
 
         foreach (var audioSource in allAudioSources)
+        {
             AudioSourcePatches.SwapClip(audioSource);
+            if (audioSource.isPlaying && audioSource.time < 0.1 && audioSource.enabled &&
+                audioSource.gameObject.activeInHierarchy)
+                RHDebugTools.QueueSound(audioSource.clip);
+        }
     }
 
     // TODO: remove jank

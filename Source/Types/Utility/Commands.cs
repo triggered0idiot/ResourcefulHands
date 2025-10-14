@@ -31,6 +31,7 @@ public static class RHCommands
     public const string DisableAllCommand = "disablepack_all";
 
     public const string ToggleDebug = "rhtoggledebug";
+    public const string DumpPackInfo = "dumppackinfo";
     public const string AssignHandPack = "assignhandpack";
     public const string ClearHandPack = "clearhandpack";
     public const string ListHandPacks = "listhandpacks";
@@ -49,6 +50,7 @@ public static class RHCommands
         CommandConsole.RemoveCommand(EnableAllCommand);
         CommandConsole.RemoveCommand(DisableAllCommand);
         CommandConsole.RemoveCommand(ToggleDebug);
+        CommandConsole.RemoveCommand(DumpPackInfo);
 
         ccInst.RegisterCommand(DumpCommand, DumpAllToPack, false);
         ccInst.RegisterCommand(ReloadCommand, ReloadPacks, false);
@@ -59,6 +61,35 @@ public static class RHCommands
         ccInst.RegisterCommand(EnableAllCommand, EnableAll, false);
         ccInst.RegisterCommand(DisableAllCommand, DisableAll, false);
         ccInst.RegisterCommand(ToggleDebug, (args) => { RHDebugTools.isOn = !RHDebugTools.isOn; }, false);
+        // yes im being lazy because its a debug command
+        ccInst.RegisterCommand(DumpPackInfo, (args) =>
+        {
+            ResourcePack? pack = GetPackFromArgs(args, RHLog.Player.Error);
+            if (pack == null)
+            {
+                RHLog.Player.Info("The first argument must be a pack!");
+                return;
+            }
+            
+            RHLog.Player.Info($"-- {pack.name} --");
+            RHLog.Player.Info($"-  [textures]  -");
+            RHLog.Player.Info($"{pack.relativeTexturesPath}");
+            foreach (var texture in pack.Textures)
+            {
+                RHLog.Player.Info($"{texture.Key}: {texture.Value}");
+            }
+            RHLog.Player.Info($"-  [sounds]  -");
+            RHLog.Player.Info($"{pack.relativeSoundsPath}");
+            foreach (var sound in pack.Sounds)
+            {
+                RHLog.Player.Info($"{sound.Key}: {sound.Value}");
+            }
+            RHLog.Player.Info($"-  [misc]  -");
+            RHLog.Player.Info($"{pack.relativeIconPath}: {pack.Icon}");
+            RHLog.Player.Info($"packVer: {pack.packVersion}");
+            RHLog.Player.Info($"gameVer: {pack.gameVersionString}");
+            RHLog.Player.Info($"frmtVer: {pack.formatVersion}");
+        }, false);
         ccInst.RegisterCommand(AssignHandPack, AssignHandResourcePack, false);
         ccInst.RegisterCommand(ClearHandPack, ClearHandResourcePack, false);
         ccInst.RegisterCommand(ListHandPacks, ListHandResourcePack, false);
