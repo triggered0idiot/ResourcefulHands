@@ -21,6 +21,7 @@ public static class InstantiatePatches
         
         void PatchObject(UnityEngine.Object obj)
         {
+            RHLog.Debug($"Attempting to patch {obj} [{obj.GetType().FullName}]");
             switch (obj)
             {
                 case Image img:
@@ -43,20 +44,39 @@ public static class InstantiatePatches
         }
         
         RHLog.Debug($"Object spawned: {result.GetType().Name} (from {original?.name ?? "unknown"})");
+
+        void RunParent(Transform parent)
+        {
+            Component[] comps = parent.GetComponentsInChildren<Component>();
+            foreach (Component comp in comps)
+                PatchObject(comp);
+        }
         switch (result)
         {
             case GameObject go:
             {
-                Component[] comps = go.GetComponentsInChildren<Component>();
-                foreach (Component comp in comps)
-                    PatchObject(comp);
+                Transform parent = go.transform.parent;
+                if (parent != null)
+                    RunParent(parent);
+                else
+                {
+                    Component[] comps = go.GetComponentsInChildren<Component>();
+                    foreach (Component comp in comps)
+                        PatchObject(comp);
+                }
                 break;
             }
             case Component component:
             {
-                Component[] comps = component.GetComponentsInChildren<Component>();
-                foreach (Component comp in comps)
-                    PatchObject(comp);
+                Transform parent = component.gameObject.transform.parent;
+                if (parent != null)
+                    RunParent(parent);
+                else
+                {
+                    Component[] comps = component.GetComponentsInChildren<Component>();
+                    foreach (Component comp in comps)
+                        PatchObject(comp);
+                }
                 break;
             }
         }

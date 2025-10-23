@@ -172,7 +172,11 @@ public class Plugin : BaseUnityPlugin
                     {
                         var spriteRenderers = FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
                         float lastTick = Time.time;
-                        float tickSpace = 0.35f;
+                        
+                        // currently the old tick speed was too slow and caused 
+                        // sprites to flicker when spawned in (which i was trying to fix with InstantiatePatches)
+                        // so i've reduced it until we have a better solution
+                        float tickSpace = 1.0f/60.0f;
                         
                         Coroutine? c = null;
                         void CreateCoroutine()
