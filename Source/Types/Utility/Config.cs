@@ -86,11 +86,12 @@ public static class RHConfig
             LeftHandPack = prefs.leftHandPack;
             RightHandPack = prefs.rightHandPack;
             
-            // TODO: quick fix, ill replace it later
+            // apparently this was a quickfix but i don't see anything wrong with it at a glance so
+            // goodbye to-do!
             if (!string.IsNullOrEmpty(LeftHandPack))
-                RHSpriteManager.OverrideHands(LeftHandPack, RHSpriteManager.GetHandPrefix(0));
+                RHSpriteManager.OverrideHands(LeftHandPack, true);
             if (!string.IsNullOrEmpty(RightHandPack))
-                RHSpriteManager.OverrideHands(RightHandPack, RHSpriteManager.GetHandPrefix(1));
+                RHSpriteManager.OverrideHands(RightHandPack, false);
         }
 
         public static void Save()

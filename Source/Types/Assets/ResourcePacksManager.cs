@@ -383,7 +383,7 @@ public static class ResourcePacksManager
         {
             try
             {
-                RHLog.Info($"Expanding texture pack zip: {zipPath}");
+                RHLog.Info($"Expanding resource pack zip: {zipPath}");
                 bool isTopLevelZip = true;
                 using (ZipArchive zip = ZipFile.OpenRead(zipPath))
                     isTopLevelZip = zip.GetEntry("info.json") != null;
@@ -405,7 +405,7 @@ public static class ResourcePacksManager
                 RHLog.Error(e);
             }
         }
-        RHLog.Info("Loading texture packs...");
+        RHLog.Info("Loading resource packs...");
         List<string> paths = new();
         paths.AddRange(Directory.GetDirectories(RHConfig.PacksFolder, "*", SearchOption.TopDirectoryOnly));
         paths.AddRange(Directory.GetDirectories(Paths.PluginPath, "*", SearchOption.AllDirectories)); // check sub dirs for plugins
@@ -419,7 +419,7 @@ public static class ResourcePacksManager
             
             try
             {
-                RHLog.Info($"Loading texture pack: {path}");
+                RHLog.Info($"Loading resource pack: {path}");
                 ResourcePack? pack = await ResourcePack.Load(path);
                 if (pack == null)
                 {
@@ -439,13 +439,13 @@ public static class ResourcePacksManager
             }
         }
 
-        RHLog.Info($"Loaded {LoadedPacks.Count}/{LoadedPacks.Count + failedPacks} texture packs");
+        RHLog.Info($"Loaded {LoadedPacks.Count}/{LoadedPacks.Count + failedPacks} resource packs");
         if (failedPacks > 0)
             RHLog.Warning($"{failedPacks} packs failed to load!");
 
         await CoroutineDispatcher.RunOnMainThreadAndWait(() =>
         {
-            isReloading = false; // no longer reloading texture packs, we can load and save orders,ect
+            isReloading = false; // no longer reloading resource packs, we can load and save orders,ect
             
             RHLog.Info("Re-ordering to user order...");
             LoadPackOrder();

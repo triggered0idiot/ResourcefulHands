@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace ResourcefulHands;
 
-// TODO: check if this is messes with anything
+// TODO: remove this as it is kinda silly that rh does this randomly (maybe make it a separate plugin to help with debugging)
 public static class AnsiSupport
 {
     const int STD_OUTPUT_HANDLE = -11;
@@ -55,7 +55,7 @@ public static class AnsiSupport
 /// </summary>
 public static class RHLog
 {
-    // console colors for the cli window thingy, probably won't work ingame at all
+    // console colors for the cli window thingy, probably won't work in-game at all
     internal static bool EnableColors = false;
     public static string Reset  => EnableColors ? "\u001b[0m" : "";
     public static string Blue   => EnableColors ? "\u001b[34m" : "";
@@ -64,8 +64,6 @@ public static class RHLog
     
     
     private const string Prefix = "[Resourceful Hands] ";
-
-    // TODO: unsure if this needs to be ran on the main thread to work, test this
 
     [Conditional("DEBUG")]
     public static void Debug(object data,
@@ -100,12 +98,18 @@ public static class RHLog
         CoroutineDispatcher.RunOnMainThreadOrCurrent(() => Plugin.Log.LogError($"[{Path.GetFileName(file)}:{lineNumber}] {data}"));
     }
     
+    /// <summary>
+    /// This class is used to print logs to the game's dev console not just the unity/bepinex one.
+    /// </summary>
     public static class Player
     {
-        private static void Message(string message, bool printToConsole = true) => CommandConsole.Log(Prefix + message, printToConsole);
+        private static void Message(string message) => CommandConsole.Log(Prefix + message, true);
         
-        public static void Info(string message, bool printToConsole = true) => Message(message, printToConsole);
-        public static void Warning(string message, bool printToConsole = true) => Message(Prefix + "[WARNING] " + message, printToConsole);
+        /// Sends an info message to the game console
+        public static void Info(string message) => Message(message);
+        /// Sends a warning message to the game console
+        public static void Warning(string message) => Message(Prefix + "[WARNING] " + message);
+        /// Sends an error message to the game console
         public static void Error(string message) => CommandConsole.LogError(Prefix + message);
     }
 }

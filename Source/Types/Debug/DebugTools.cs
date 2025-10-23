@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 
 namespace ResourcefulHands;
 
-// TODO: add debug tools
+// TODO: this needs alotta work to be effective
 public class RHDebugTools : MonoBehaviour
 {
     public static RHDebugTools? Instance;

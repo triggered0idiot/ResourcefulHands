@@ -41,27 +41,40 @@ public class RHSpriteManager
         }
     }
 
-    /// Applies <see cref="ResourcePacksManager.AddTextureOverride"/> to each hand sprite for a given pack
-    public static void OverrideHands(string packId, string lrPrefix = "")
+    /// Applies <see cref="ResourcePacksManager.AddTextureOverride"/> to each hand sprite for a given 
+    /// <param name="packId">The id of the resource pack to override the original assets with.</param>
+    /// <param name="isLeft">true for left hand, false for right hand</param>
+    public static void OverrideHands(string packId, bool isLeft)
     {
+        string prefix = (isLeft ? GetHandPrefix(0) : GetHandPrefix(1));
         foreach (var spriteName in HandSpriteNames)
-            ResourcePacksManager.AddTextureOverride(lrPrefix + spriteName, spriteName, packId);
+            ResourcePacksManager.AddTextureOverride(prefix + spriteName, spriteName, packId);
         
-        ResourcePacksManager.AddTextureOverride(lrPrefix + "hand-sheet", "hand-sheet", packId);
+        ResourcePacksManager.AddTextureOverride(prefix + "hand-sheet", "hand-sheet", packId);
     }
     
-    public static void ClearHandsOverride(string lrPrefix = "")
+    /// <summary>
+    /// Removes the texture override for a specific hand
+    /// </summary>
+    /// <param name="isLeft">true for left hand, false for right hand</param>
+    public static void ClearHandsOverride(bool isLeft)
     {
+        string prefix = (isLeft ? GetHandPrefix(0) : GetHandPrefix(1));
         foreach (var spriteName in HandSpriteNames)
-            ResourcePacksManager.RemoveTextureOverride(lrPrefix + spriteName);
+            ResourcePacksManager.RemoveTextureOverride(prefix + spriteName);
                 
-        ResourcePacksManager.RemoveTextureOverride(lrPrefix + "hand-sheet");
+        ResourcePacksManager.RemoveTextureOverride(prefix + "hand-sheet");
     }
     
-    public static string GetHandsOverride(string lrPrefix = "")
+    /// <summary>
+    /// Returns the texture override for a specific hand
+    /// </summary>
+    /// <param name="isLeft">true for left hand, false for right hand</param>
+    /// <returns>The name of the overriding pack</returns>
+    public static string GetHandsOverride(bool isLeft)
     {
         foreach (var spriteName in HandSpriteNames)
-            return ResourcePacksManager.GetTextureOverride(lrPrefix + spriteName)?.Item2 ?? string.Empty;
+            return ResourcePacksManager.GetTextureOverride((isLeft ? GetHandPrefix(0) : GetHandPrefix(1)) + spriteName)?.Item2 ?? string.Empty;
         return string.Empty;
     }
     
@@ -145,7 +158,7 @@ public class RHSpriteManager
             if(!newSpriteTexName.StartsWith(prefix))
                 newSpriteTexName = prefix + newSpriteTexName;
             
-            // if there isnt a pack associated to a l/r hand then dont replace the l/r hand
+            // if there isn't a pack associated to a l/r hand then dont replace the l/r hand
             if ((RHConfig.PackPrefs.GetLeftHandPack() == null && prefix == GetHandPrefix(0))||
                 (RHConfig.PackPrefs.GetRightHandPack() == null && prefix == GetHandPrefix(1)))
             {

@@ -133,12 +133,12 @@ public class UI_RHPack : MonoBehaviour
         {
             if (RHConfig.PackPrefs.LeftHandPack == _pack.guid)
             {
-                RHSpriteManager.ClearHandsOverride(RHSpriteManager.GetHandPrefix(0));
+                RHSpriteManager.ClearHandsOverride(true);
                 RHConfig.PackPrefs.LeftHandPack = "";
             }
             else
             {
-                RHSpriteManager.OverrideHands(pack.guid, RHSpriteManager.GetHandPrefix(0));
+                RHSpriteManager.OverrideHands(pack.guid, true);
                 RHConfig.PackPrefs.LeftHandPack = pack.guid;
             }
             
@@ -149,12 +149,12 @@ public class UI_RHPack : MonoBehaviour
         {
             if (RHConfig.PackPrefs.RightHandPack == _pack.guid)
             {
-                RHSpriteManager.ClearHandsOverride(RHSpriteManager.GetHandPrefix(1));
+                RHSpriteManager.ClearHandsOverride(false);
                 RHConfig.PackPrefs.RightHandPack = "";
             }
             else
             {
-                RHSpriteManager.OverrideHands(pack.guid, RHSpriteManager.GetHandPrefix(1));
+                RHSpriteManager.OverrideHands(pack.guid, false);
                 RHConfig.PackPrefs.RightHandPack = pack.guid;
             }
 

@@ -31,6 +31,7 @@ public static class RHSettingsManager
         }
     }
     
+    /// Creates and attaches the custom settings menu (pack selection) to the settings window.
     public static void LoadCustomSettings()
     {
         var scene = SceneManager.GetActiveScene();
@@ -164,7 +165,15 @@ public static class RHSettingsManager
         return canvasGO;
     }
     
+    // used to show once that the rhconfig folder is out of date
+    // TODO: make an option to hide this forever
     public static bool HasShownRHConfigNotice = false;
+    /// <summary>
+    /// Shows a full screen popup that has a title and description with an ok button.
+    /// This doesn't have a logo on it.
+    /// </summary>
+    /// <param name="title">The title to show. (placed at the top)</param>
+    /// <param name="text">The description to show. (placed roughly at the center)</param>
     public static void ShowPopup(string title, string text)
     {
         GameObject? popupPrefab = Plugin.Assets?.LoadAsset<GameObject>("Popup-Root");
@@ -175,7 +184,7 @@ public static class RHSettingsManager
 
         var titleText = popup.transform.FindAt<TextMeshProUGUI>("Popup/Title");
         var descText = popup.transform.FindAt<TextMeshProUGUI>("Popup/Desc");
-        var okButton = popup.GetComponentInChildren<Button>();
+        var okButton = popup.GetComponentInChildren<Button>(includeInactive:true);
 
         var font = UiFont ?? titleText!.font;
         
@@ -193,6 +202,11 @@ public static class RHSettingsManager
         popup.SetActive(true);
     }
     
+    /// <summary>
+    /// Shows a notification-esque message that slides in at the top left of the screen.
+    /// It has the RH logo at the left and text on the right.
+    /// </summary>
+    /// <param name="text"></param>
     public static void ShowNotice(string text)
     {
         GameObject? popupPrefab = Plugin.Assets?.LoadAsset<GameObject>("Notice-Root");

@@ -81,6 +81,8 @@ namespace ResourcefulHands;
 [System.Serializable]
 public class ResourcePack
 {
+    // TODO: implement game-version and pack-version
+    
     public string name = string.Empty;
     public string desc = string.Empty;
     public string author = string.Empty;
@@ -214,18 +216,18 @@ public class ResourcePack
         {
             if (pack.hiddenFromList)
             {
-                RHLog.Info($"Not loading texture pack at {path} because it is hidden.");
+                RHLog.Info($"Not loading resource pack at {path} because it is hidden.");
                 return null;
             }
             if (pack.onlyInFullGame && Plugin.IsDemo)
             {
-                RHLog.Info($"Skipping incompatible texture pack (it says it only works for the fullgame): {path}");
+                RHLog.Info($"Skipping incompatible resource pack (it says it only works for the fullgame): {path}");
                 return null;
             }
         }
         
         if(pack.formatVersion != CurrentFormatVersion)
-            RHLog.Warning($"Texture pack at {path} is format version {pack.formatVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
+            RHLog.Warning($"Resource pack at {path} is format version {pack.formatVersion} which isn't {CurrentFormatVersion} (the current version), it may not function correctly.");
         
         string iconPath = Path.Combine(path, pack.relativeIconPath);
         if(!File.Exists(iconPath))
@@ -282,10 +284,10 @@ public class ResourcePack
             return null;
         }
             
-        RHLog.Info($"Texture pack at {path} is valid, loading assets...");
+        RHLog.Info($"Resource pack at {path} is valid, loading assets...");
         string texturesFolder = Path.Combine(path, pack.relativeTexturesPath);
         string soundsFolder = Path.Combine(path, pack.relativeSoundsPath);
-        RHLog.Debug($"Texture pack at {path} uses '{texturesFolder}' and '{soundsFolder}'");
+        RHLog.Debug($"Resource pack at {path} uses '{texturesFolder}' and '{soundsFolder}'");
         
         string[] textureFiles = [];
         string[] soundFiles = [];

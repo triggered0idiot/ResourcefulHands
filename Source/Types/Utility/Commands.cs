@@ -98,7 +98,7 @@ public static class RHCommands
     private static void MovePacks(string[] args)
     {
         const string helpText =
-            $"Usage: {MoveCommand} [pack guid/pack index] [up/down]\nResource packs at the bottom of the loaded list will override textures at the top, use this command to move a texture pack up or down the list.";
+            $"Usage: {MoveCommand} [pack guid/pack index] [up/down]\nResource packs at the bottom of the loaded list will override textures at the top, use this command to move a resource pack up or down the list.";
         if (args.Length != 2)
         {
             RHLog.Player.Error("Invalid number of arguments!");
@@ -268,7 +268,7 @@ public static class RHCommands
             return;
         }
 
-        RHLog.Player.Info("Dumping all resources to a template texture pack [this will take some time]...");
+        RHLog.Player.Info("Dumping all resources to a template resource pack [this will take some time]...");
         List<Texture2D> textures = [];
         List<Texture2D> spriteTextures = [];
         List<AudioClip> sounds = [];
@@ -558,14 +558,14 @@ public static class RHCommands
             return;
         }
 
-        RHSpriteManager.OverrideHands(pack.guid, RHSpriteManager.GetHandPrefix(handId));
+        RHSpriteManager.OverrideHands(pack.guid, handId == 0);
         if (handId == 0) RHConfig.PackPrefs.LeftHandPack = pack.guid;
         else RHConfig.PackPrefs.RightHandPack = pack.guid;
         
         // Force refresh of sprites
         RHSpriteManager.ClearHandSprites();
         string handName = handId == 0 ? "left" : "right";
-        RHLog.Player.Info($"Assigned texture pack '{pack.guid}' to {handName} hand");
+        RHLog.Player.Info($"Assigned resource pack '{pack.guid}' to {handName} hand");
     }
     
     private static void ClearHandResourcePack(string[] args)
@@ -587,24 +587,24 @@ public static class RHCommands
             return;
         }
         
-        RHSpriteManager.ClearHandsOverride(RHSpriteManager.GetHandPrefix(handId));
+        RHSpriteManager.ClearHandsOverride(handId == 0);
         if (handId == 0) RHConfig.PackPrefs.LeftHandPack = "";
         else RHConfig.PackPrefs.RightHandPack = "";
         
         // Force refresh of sprites
         RHSpriteManager.ClearHandSprites();
         string handName = handId == 0 ? "left" : "right";
-        RHLog.Player.Info($"Cleared texture pack from {handName} hand");
+        RHLog.Player.Info($"Cleared resource pack from {handName} hand");
     }
     
     private static void ListHandResourcePack(string[] args)
     {
-        RHLog.Player.Info("Hand Texture Pack Assignments:");
+        RHLog.Player.Info("Hand Resource Pack Assignments:");
         
         for (int i = 0; i < 2; i++)
         {
             string handName = i == 0 ? "Left" : "Right";
-            string packGuid = RHSpriteManager.GetHandsOverride(RHSpriteManager.GetHandPrefix(i));
+            string packGuid = RHSpriteManager.GetHandsOverride(i == 0);
             
             if (string.IsNullOrEmpty(packGuid))
                 RHLog.Player.Info($"{handName} Hand: No custom pack assigned");
